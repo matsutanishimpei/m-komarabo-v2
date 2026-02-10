@@ -1,3 +1,9 @@
+メモ
+D1データベースのID: d3ad4a59-fad0-482f-a1f1-8a6d95f026e3
+モジュール構成: auth, issues, wakuwaku, admin に分かれていること。
+初期衝動の封印: ワクワク試作室のコアコンセプト。
+
+
 # 松谷の試作室 (Matsutani's Prototyping Studio)
 
 2つの扉を持つ試作プラットフォームです。
