@@ -58,4 +58,9 @@ auth.post('/login', async (c) => {
     }
 });
 
+auth.onError((err, c) => {
+    console.error('Auth Error:', err);
+    return c.json({ success: false, message: err.message || 'Internal Server Error' }, 500);
+});
+
 export default auth;
