@@ -36,9 +36,30 @@ erDiagram
         datetime created_at "投稿日時"
     }
 
+    PRODUCTS {
+        integer id PK "ID"
+        integer creator_id FK "作成者ID"
+        text title "プロダクト名"
+        text url "プロダクトURL(任意)"
+        text initial_prompt_log "初期衝動履歴"
+        text dev_obsession "開発の変執"
+        text status "ステータス(published/draft)"
+        datetime sealed_at "封印日時"
+        datetime created_at "作成日時"
+        datetime updated_at "更新日時"
+    }
+
+    SITE_CONFIGS {
+        text key PK "設定キー"
+        text value "設定値"
+        text description "説明"
+        datetime updated_at "更新日時"
+    }
+
     USERS ||--o{ ISSUES : "作成"
     ISSUES ||--o| CERTIFICATES : "証明"
     USERS ||--o{ CERTIFICATES : "獲得"
     ISSUES ||--o{ COMMENTS : "紐付き"
     USERS ||--o{ COMMENTS : "記入"
+    USERS ||--o{ PRODUCTS : "作成(ワクワク試作室)"
 ```
