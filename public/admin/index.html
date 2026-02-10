@@ -25,7 +25,7 @@
             </div>
             <div class="flex items-center gap-4">
                 <span class="text-sm text-gray-600" id="adminName">Loading...</span>
-                <a href="index.html" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition">
+                <a href="../index.html" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition">
                     サイトに戻る
                 </a>
             </div>
@@ -137,7 +137,7 @@
     </main>
 
     <script type="module">
-        import { checkAuth, adminApiRequest, apiRequest, formatDate, validateRequired } from './js/common.js';
+        import { checkAuth, adminApiRequest, apiRequest, formatDate, validateRequired } from '../js/common.js';
 
         // 認証チェック
         const auth = checkAuth(true);
@@ -153,7 +153,7 @@
 
                 if (!data.is_admin) {
                     alert('管理者権限が必要です');
-                    location.href = 'index.html';
+                    location.href = '../index.html';
                     throw new Error('Not admin');
                 }
 
@@ -161,7 +161,7 @@
             } catch (err) {
                 console.error(err);
                 alert('管理者確認に失敗しました');
-                location.href = 'index.html';
+                location.href = '../index.html';
             }
         }
 

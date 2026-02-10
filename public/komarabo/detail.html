@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>詳細ワークスペース | 困りごとラボ</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="js/tailwind-config.js"></script>
+    <script src="../js/tailwind-config.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@400;700&display=swap"
@@ -137,7 +137,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const issueId = urlParams.get('id');
 
-        if (!currentUserHash) window.location.href = 'login.html';
+        if (!currentUserHash) window.location.href = '../login.html';
         if (!issueId) window.location.href = 'index.html';
 
         document.getElementById('display-user-hash').textContent = currentUserHash;
@@ -148,7 +148,7 @@
 
         async function fetchIssueDetail() {
             try {
-                const res = await fetch(`${API_BASE}/get-issue-detail?id=${issueId}`);
+                const res = await fetch(`${API_BASE}/issues/detail?id=${issueId}`);
                 const data = await res.json();
                 renderDetail(data);
                 scrollToBottom();
@@ -220,7 +220,7 @@
             if (!content) return;
 
             try {
-                const res = await fetch(`${API_BASE}/post-comment`, {
+                const res = await fetch(`${API_BASE}/issues/comment`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ issue_id: issueId, content, user_hash: currentUserHash })
@@ -238,7 +238,7 @@
         async function updateStatus(status) {
             if (!confirm(`解決を承認し、この課題をクローズしますか？`)) return;
             try {
-                const res = await fetch(`${API_BASE}/update-issue-status`, {
+                const res = await fetch(`${API_BASE}/issues/update-status`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: issueId, status })
@@ -252,7 +252,7 @@
         async function unassignIssue() {
             if (!confirm('着手をキャンセルしますか？')) return;
             try {
-                const res = await fetch(`${API_BASE}/unassign-issue`, {
+                const res = await fetch(`${API_BASE}/issues/unassign`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: issueId })
@@ -265,7 +265,7 @@
 
         async function postResolutionReport() {
             const msg = "✅ 解決しました！内容の確認をお願いします。";
-            const res = await fetch(`${API_BASE}/post-comment`, {
+            const res = await fetch(`${API_BASE}/issues/comment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ issue_id: issueId, content: msg, user_hash: currentUserHash })
@@ -279,7 +279,7 @@
 
         function logout() {
             localStorage.clear();
-            window.location.href = 'login.html';
+            window.location.href = '../login.html';
         }
 
         // Enterで送信（Shift+Enterで改行）

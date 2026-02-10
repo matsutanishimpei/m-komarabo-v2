@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>困りごとラボ 〜街の課題の試作室〜</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="js/tailwind-config.js"></script>
+    <script src="../js/tailwind-config.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+JP:wght@300;400;700&display=swap');
 
@@ -27,7 +27,7 @@
     <header class="sticky top-0 z-50 glass px-6 py-4 mb-8">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <!-- Logo Area -->
-            <a href="index.html" class="flex items-center gap-2 group">
+            <a href="../index.html" class="flex items-center gap-2 group">
                 <div
                     class="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-black text-sm group-hover:rotate-12 transition-transform">
                     K
@@ -169,7 +169,7 @@
     </script>
     <script type="module">
         import { GoogleGenerativeAI } from "@google/generative-ai";
-        import { checkAuth, logout as commonLogout, displayUserName } from './js/common.js';
+        import { checkAuth, logout as commonLogout, displayUserName } from '../js/common.js';
 
         // ログインチェック
         const auth = checkAuth(true, 'komarabo');
@@ -181,7 +181,7 @@
         displayUserName('display_user_hash');
 
         function logout() {
-            commonLogout('login.html');
+            commonLogout('../login.html');
         }
         window.logout = logout;
 
@@ -216,8 +216,8 @@
         async function fetchIssues() {
             try {
                 const endpoint = currentMode === 'requester'
-                    ? `/api/list-issues?filter=mine&user_hash=${currentUserHash}`
-                    : `/api/list-issues?filter=all`;
+                    ? `/api/issues/list?filter=mine&user_hash=${currentUserHash}`
+                    : `/api/issues/list?filter=all`;
 
                 const res = await fetch(endpoint);
                 if (!res.ok) {
@@ -312,7 +312,7 @@
         async function takeIssue(id) {
             if (!confirm('この課題に着手しますか？')) return;
             try {
-                const res = await fetch('/api/update-issue-status', {
+                const res = await fetch('/api/issues/update-status', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id, status: 'progress', user_hash: currentUserHash })
@@ -331,7 +331,7 @@
         async function unassignIssue(id) {
             if (!confirm('この課題への挙手を下ろしますか？（未着手状態に戻ります）')) return;
             try {
-                const res = await fetch('/api/unassign-issue', {
+                const res = await fetch('/api/issues/unassign', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id })
@@ -353,7 +353,7 @@
             if (!confirm('この課題を取り下げますか？\n※着手されていない課題のみ削除できます')) return;
 
             try {
-                const res = await fetch('/api/delete-issue', {
+                const res = await fetch('/api/issues/delete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id, user_hash: currentUserHash })
@@ -386,7 +386,7 @@
 
             const payload = { user_hash: currentUserHash, title, description };
 
-            const postPromise = fetch('/api/post-issue', {
+            const postPromise = fetch('/api/issues/post', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

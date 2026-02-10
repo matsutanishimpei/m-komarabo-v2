@@ -31,7 +31,7 @@
     <!-- Header -->
     <header class="border-b border-slate-800 px-6 py-4 mb-8 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <a href="wakuwaku.html"
+            <a href="index.html"
                 class="text-slate-400 hover:text-white transition text-sm font-medium flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
@@ -180,10 +180,10 @@ User: いいね！でもここはもっと..."
     </main>
 
     <script type="module">
-        import { injectWakuwakuBackground } from './js/theme.js';
+        import { injectWakuwakuBackground } from '../js/theme.js';
         injectWakuwakuBackground();
 
-        import { checkAuth, apiRequest, validateRequired } from './js/common.js';
+        import { checkAuth, apiRequest, validateRequired } from '../js/common.js';
 
         // 認証チェック
         const auth = checkAuth(true, 'wakuwaku');
@@ -236,7 +236,7 @@ User: いいね！でもここはもっと..."
 
                 if (data.success) {
                     alert('投稿完了しました！\nあなたの初期衝動が永久保存されました。');
-                    location.href = 'wakuwaku.html';
+                    location.href = 'index.html';
                 } else {
                     alert('エラー: ' + (data.message || 'サーバーエラーが発生しました'));
                 }
