@@ -32,7 +32,7 @@
     <header class="border-b border-slate-800 px-6 py-4 mb-12 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <!-- Logo Area -->
-            <a href="../index.html" class="flex items-center gap-2 group">
+            <a href="/index.html" class="flex items-center gap-2 group">
                 <div
                     class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-black text-sm group-hover:rotate-12 transition-transform shadow-lg shadow-purple-900/50">
                     W
@@ -220,7 +220,7 @@
             } else {
                 // 未ログイン
                 statusElement.innerHTML = `
-                    <a href="../login.html#wakuwaku" class="px-3 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-600 transition text-white text-xs font-medium">
+                    <a href="/login.html#wakuwaku" class="px-3 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-600 transition text-white text-xs font-medium">
                         ログイン
                     </a>
                 `;
@@ -229,7 +229,7 @@
 
         // ログアウト処理
         window.handleLogout = function () {
-            commonLogout('../wakuwaku/index.html');
+            commonLogout('/wakuwaku/index.html');
         };
 
         // プロダクト一覧を読み込む

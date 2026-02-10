@@ -84,14 +84,14 @@
 
         <!-- Back Link -->
         <div class="mt-6 text-center">
-            <a href="index.html" class="text-xs opacity-50 hover:opacity-100 transition">トップページへ戻る</a>
+            <a href="/index.html" class="text-xs opacity-50 hover:opacity-100 transition">トップページへ戻る</a>
         </div>
     </div>
 
     <script>
         let isLoginMode = true;
         let theme = 'komarabo'; // 'komarabo' (light) or 'wakuwaku' (dark)
-        let redirectTo = 'komarabo/index.html';
+        let redirectTo = '/komarabo/index.html';
 
         // Elements
         const body = document.getElementById('body');
@@ -113,7 +113,7 @@
                 text: ['text-blue-600'], // for toggle button
                 title: '困りごとラボ',
                 subtitle: '街の課題を解決するプラットフォーム',
-                redirect: 'komarabo/index.html'
+                redirect: '/komarabo/index.html'
             },
             wakuwaku: {
                 body: ['bg-slate-900', 'text-slate-100'],
@@ -123,7 +123,7 @@
                 text: ['text-purple-400'], // for toggle button
                 title: 'ワクワク試作室',
                 subtitle: '技術とアイデアの実験場',
-                redirect: 'wakuwaku.html' // Note: wakuwaku usually redirects to post page in logic, but default base is here
+                redirect: '/wakuwaku/index.html' // Note: wakuwaku usually redirects to post page in logic, but default base is here
             }
         };
 
@@ -138,10 +138,10 @@
 
             if (hash === 'wakuwaku') {
                 theme = 'wakuwaku';
-                redirectTo = 'wakuwaku/post.html'; // Override redirect for wakuwaku specific flow
+                redirectTo = '/wakuwaku/index.html'; // Override redirect for wakuwaku specific flow
             } else {
                 theme = 'komarabo';
-                redirectTo = 'komarabo/index.html';
+                redirectTo = '/komarabo/index.html';
             }
 
             const t = themes[theme];

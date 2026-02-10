@@ -19,7 +19,7 @@ export function checkAuth(required = true, redirectTheme = 'komarabo') {
 
     if (!userHash || !authToken) {
         if (required) {
-            const redirectUrl = redirectTheme === 'wakuwaku' ? 'login.html#wakuwaku' : 'login.html#komarabo';
+            const redirectUrl = redirectTheme === 'wakuwaku' ? '/login.html#wakuwaku' : '/login.html#komarabo';
             location.href = redirectUrl;
             throw new Error('Not logged in');
         }
@@ -33,7 +33,7 @@ export function checkAuth(required = true, redirectTheme = 'komarabo') {
  * ログアウト処理
  * @param {string} redirectUrl - ログアウト後のリダイレクト先
  */
-export function logout(redirectUrl = 'index.html') {
+export function logout(redirectUrl = '/index.html') {
     localStorage.removeItem('user_hash');
     localStorage.removeItem('auth_token');
     alert('ログアウトしました');
