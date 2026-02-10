@@ -1,0 +1,12 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Cloudflare Wrangler
+.wrangler/
+.env
+
+# System
+.DS_Store
+Thumbs.db
