@@ -27,6 +27,7 @@ Cloudflare Pages と D1 データベース、Hono フレームワークを使用
   - `login.html`: ログイン/登録ページ。
 - `wrangler.toml`: Cloudflare Pages の設定ファイル。ビルド設定やD1データベースの紐付けを行う。
 - `package.json`: プロジェクトの依存関係と開発用スクリプトの定義。
+- `.gitignore`: Gitの管理対象外ファイルを指定（node_modules, .wranglerなど）。
 
 ---
 
