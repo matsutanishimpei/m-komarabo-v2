@@ -23,7 +23,7 @@
     </style>
 </head>
 
-<body class="bg-white min-h-screen flex items-center justify-center p-6">
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-6">
     <div class="max-w-5xl w-full">
         <!-- Header -->
         <div class="text-center mb-20">
@@ -40,38 +40,47 @@
             <!-- Left Door: Komarabo -->
             <a href="komarabo.html" class="door-card group block">
                 <div
-                    class="border border-slate-200 rounded-2xl p-10 h-full min-h-[400px] flex flex-col justify-between hover:border-blue-300 hover:shadow-lg hover:shadow-blue-50 transition-all bg-white">
-                    <!-- Icon -->
-                    <div class="mb-8">
-                        <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-6">
-                            <span class="text-2xl">💡</span>
+                    class="relative overflow-hidden border border-slate-200 rounded-2xl p-10 h-full min-h-[400px] flex flex-col justify-between hover:border-blue-300 hover:shadow-xl hover:shadow-blue-100 transition-all bg-white group-hover:-translate-y-1">
+
+                    <!-- Background Gradient (Subtle City Feel) -->
+                    <div
+                        class="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-cyan-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                    </div>
+
+                    <div class="relative z-10">
+                        <!-- Icon -->
+                        <div class="mb-8">
+                            <div
+                                class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-6 shadow-sm">
+                                <span class="text-2xl">💡</span>
+                            </div>
+                            <h2 class="text-3xl font-semibold text-slate-900 mb-2">
+                                困りごとラボ
+                            </h2>
+                            <p class="text-sm text-slate-400 font-light tracking-wide">
+                                Komarabo
+                            </p>
                         </div>
-                        <h2 class="text-3xl font-semibold text-slate-900 mb-2">
-                            困りごとラボ
-                        </h2>
-                        <p class="text-sm text-slate-400 font-light tracking-wide">
-                            Komarabo
-                        </p>
-                    </div>
 
-                    <!-- Catchphrase -->
-                    <div class="mb-8">
-                        <p class="text-xl text-slate-700 leading-relaxed font-light">
-                            その悩み、<br>
-                            プロトタイプの種になる。
-                        </p>
-                    </div>
+                        <!-- Catchphrase -->
+                        <div class="mb-8">
+                            <p class="text-xl text-slate-700 leading-relaxed font-light">
+                                その悩み、<br>
+                                プロトタイプの種になる。
+                            </p>
+                        </div>
 
-                    <!-- Description -->
-                    <div class="space-y-2 mb-8">
-                        <p class="text-sm text-slate-500 leading-relaxed">
-                            市民や非ITの方の「不便」を投稿し、解決策を議論する場所。
-                        </p>
+                        <!-- Description -->
+                        <div class="space-y-2 mb-8">
+                            <p class="text-sm text-slate-500 leading-relaxed">
+                                市民や非ITの方の「不便」を投稿し、解決策を議論する場所。
+                            </p>
+                        </div>
                     </div>
 
                     <!-- CTA -->
                     <div
-                        class="flex items-center text-blue-600 text-sm font-medium group-hover:translate-x-1 transition-transform">
+                        class="relative z-10 flex items-center text-blue-600 text-sm font-bold group-hover:translate-x-2 transition-transform">
                         課題を見る
                         <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
@@ -84,38 +93,47 @@
             <!-- Right Door: Waku-Waku Lab -->
             <a href="wakuwaku.html" class="door-card group block">
                 <div
-                    class="border border-slate-200 rounded-2xl p-10 h-full min-h-[400px] flex flex-col justify-between hover:border-pink-300 hover:shadow-lg hover:shadow-pink-50 transition-all bg-white">
-                    <!-- Icon -->
-                    <div class="mb-8">
-                        <div class="w-12 h-12 rounded-xl bg-pink-50 flex items-center justify-center mb-6">
-                            <span class="text-2xl">🎨</span>
+                    class="relative overflow-hidden border border-slate-200 rounded-2xl p-10 h-full min-h-[400px] flex flex-col justify-between hover:border-purple-300 hover:shadow-xl hover:shadow-purple-100 transition-all bg-white group-hover:-translate-y-1">
+
+                    <!-- Background Gradient (Workshop Feel) -->
+                    <div
+                        class="absolute inset-0 bg-gradient-to-br from-slate-100 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                    </div>
+
+                    <div class="relative z-10">
+                        <!-- Icon -->
+                        <div class="mb-8">
+                            <div
+                                class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-6 shadow-sm">
+                                <span class="text-2xl">🎨</span>
+                            </div>
+                            <h2 class="text-3xl font-semibold text-slate-900 mb-2">
+                                ワクワク試作室
+                            </h2>
+                            <p class="text-sm text-slate-400 font-light tracking-wide">
+                                Waku-Waku Lab
+                            </p>
                         </div>
-                        <h2 class="text-3xl font-semibold text-slate-900 mb-2">
-                            ワクワク試作室
-                        </h2>
-                        <p class="text-sm text-slate-400 font-light tracking-wide">
-                            Waku-Waku Lab
-                        </p>
-                    </div>
 
-                    <!-- Catchphrase -->
-                    <div class="mb-8">
-                        <p class="text-xl text-slate-700 leading-relaxed font-light">
-                            技術の無駄遣い、<br>
-                            大歓迎。
-                        </p>
-                    </div>
+                        <!-- Catchphrase -->
+                        <div class="mb-8">
+                            <p class="text-xl text-slate-700 leading-relaxed font-light">
+                                技術の無駄遣い、<br>
+                                大歓迎。
+                            </p>
+                        </div>
 
-                    <!-- Description -->
-                    <div class="space-y-2 mb-8">
-                        <p class="text-sm text-slate-500 leading-relaxed">
-                            尖ったアプリや、エンジニアの変執的なこだわりが詰まったプロダクトの展示。
-                        </p>
+                        <!-- Description -->
+                        <div class="space-y-2 mb-8">
+                            <p class="text-sm text-slate-500 leading-relaxed">
+                                尖ったアプリや、エンジニアの変執的なこだわりが詰まったプロダクトの展示。
+                            </p>
+                        </div>
                     </div>
 
                     <!-- CTA -->
                     <div
-                        class="flex items-center text-pink-600 text-sm font-medium group-hover:translate-x-1 transition-transform">
+                        class="relative z-10 flex items-center text-purple-600 text-sm font-bold group-hover:translate-x-2 transition-transform">
                         作品を見る
                         <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
