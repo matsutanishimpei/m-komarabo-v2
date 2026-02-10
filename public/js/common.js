@@ -19,7 +19,7 @@ export function checkAuth(required = true, redirectTheme = 'komarabo') {
 
     if (!userHash || !authToken) {
         if (required) {
-            const redirectUrl = redirectTheme === 'wakuwaku' ? 'login.html#wakuwaku' : 'login.html';
+            const redirectUrl = redirectTheme === 'wakuwaku' ? 'login.html#wakuwaku' : 'login.html#komarabo';
             location.href = redirectUrl;
             throw new Error('Not logged in');
         }

@@ -5,189 +5,173 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ログイン</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+JP:wght@300;400;700&display=swap');
+
         body {
-            font-family: sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            transition: background 0.3s ease;
+            font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* コマラボテーマ（デフォルト） */
-        body.theme-komarabo {
-            background: #f4f7f6;
-        }
-
-        body.theme-komarabo .login-card {
-            background: white;
-            color: #333;
-        }
-
-        body.theme-komarabo h1 {
-            color: #333;
-        }
-
-        body.theme-komarabo input {
-            background: white;
-            color: #333;
-            border: 1px solid #ddd;
-        }
-
-        body.theme-komarabo button {
-            background: #0070f3;
-        }
-
-        body.theme-komarabo button:hover {
-            background: #0051cc;
-        }
-
-        /* ワクワク試作室テーマ */
-        body.theme-wakuwaku {
-            background: #0f172a;
-        }
-
-        body.theme-wakuwaku .login-card {
-            background: #1e293b;
-            color: #e2e8f0;
-            border: 1px solid #334155;
-        }
-
-        body.theme-wakuwaku h1 {
-            color: #f1f5f9;
-        }
-
-        body.theme-wakuwaku input {
-            background: #0f172a;
-            color: #e2e8f0;
-            border: 1px solid #475569;
-        }
-
-        body.theme-wakuwaku input::placeholder {
-            color: #64748b;
-        }
-
-        body.theme-wakuwaku button {
-            background: #8b5cf6;
-        }
-
-        body.theme-wakuwaku button:hover {
-            background: #7c3aed;
-        }
-
-        body.theme-wakuwaku .toggle-text {
-            color: #94a3b8;
-        }
-
-        body.theme-wakuwaku .toggle-text button {
-            color: #a78bfa;
-            background: transparent;
-            padding: 0;
-            width: auto;
-        }
-
-        body.theme-wakuwaku .toggle-text button:hover {
-            color: #c4b5fd;
-            background: transparent;
-        }
-
-        .login-card {
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-            transition: all 0.3s ease;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            font-size: 24px;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: all 0.3s ease;
-        }
-
-        .toggle-text {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 14px;
-        }
-
-        .toggle-text button {
-            color: #0070f3;
-            text-decoration: underline;
-            cursor: pointer;
-            border: none;
-            background: none;
-            font-size: 14px;
+        /* Glassmorphism */
+        .glass {
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
     </style>
 </head>
 
-<body class="theme-komarabo">
-    <div class="login-card">
-        <h1 id="pageTitle">困りごとラボ - ログイン</h1>
+<body class="min-h-screen flex items-center justify-center p-4 transition-colors duration-300" id="body">
 
-        <div id="loginForm">
-            <input type="text" id="loginUserHash" placeholder="ニックネーム">
-            <input type="password" id="loginPassword" placeholder="パスワード">
-            <button onclick="login()">ログイン</button>
+    <div id="card" class="w-full max-w-md p-8 rounded-2xl shadow-xl transition-all duration-300 transform">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 id="pageTitle" class="text-2xl font-bold mb-2 transition-colors duration-300">ログイン</h1>
+            <p id="subTitle" class="text-sm transition-colors duration-300 opacity-70">アカウントにアクセスする</p>
         </div>
 
-        <div id="registerForm" style="display: none;">
-            <input type="text" id="registerUserHash" placeholder="ニックネーム">
-            <input type="password" id="registerPassword" placeholder="パスワード">
-            <button onclick="register()">新規登録</button>
+        <!-- Login Form -->
+        <div id="loginForm" class="space-y-4">
+            <div>
+                <label for="loginUserHash"
+                    class="block text-xs font-bold uppercase tracking-widest mb-1 opacity-60">Nick Name</label>
+                <input type="text" id="loginUserHash" placeholder="ニックネーム"
+                    class="w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition duration-200">
+            </div>
+            <div>
+                <label for="loginPassword"
+                    class="block text-xs font-bold uppercase tracking-widest mb-1 opacity-60">Password</label>
+                <input type="password" id="loginPassword" placeholder="パスワード"
+                    class="w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition duration-200">
+            </div>
+            <button onclick="login()" id="loginBtn"
+                class="w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition duration-200 transform hover:-translate-y-0.5 mt-2">
+                ログイン
+            </button>
         </div>
 
-        <div class="toggle-text">
-            <span id="toggleText">アカウントをお持ちでない方は</span>
-            <button id="toggleButton" onclick="toggleForm()">新規登録</button>
+        <!-- Register Form -->
+        <div id="registerForm" class="space-y-4 hidden">
+            <div>
+                <label for="registerUserHash"
+                    class="block text-xs font-bold uppercase tracking-widest mb-1 opacity-60">Nick Name</label>
+                <input type="text" id="registerUserHash" placeholder="ニックネーム（公開されます）"
+                    class="w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition duration-200">
+                <p class="text-[10px] mt-1 opacity-50">※他のユーザーにも表示される名前です</p>
+            </div>
+            <div>
+                <label for="registerPassword"
+                    class="block text-xs font-bold uppercase tracking-widest mb-1 opacity-60">Password</label>
+                <input type="password" id="registerPassword" placeholder="パスワード"
+                    class="w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition duration-200">
+            </div>
+            <button onclick="register()" id="registerBtn"
+                class="w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition duration-200 transform hover:-translate-y-0.5 mt-2">
+                新規登録
+            </button>
+        </div>
+
+        <!-- Toggle -->
+        <div class="mt-8 text-center text-sm">
+            <span id="toggleText" class="opacity-70">アカウントをお持ちでない方は</span>
+            <button id="toggleButton" onclick="toggleForm()"
+                class="font-bold underline ml-1 hover:opacity-80 transition">
+                新規登録
+            </button>
+        </div>
+
+        <!-- Back Link -->
+        <div class="mt-6 text-center">
+            <a href="index.html" class="text-xs opacity-50 hover:opacity-100 transition">トップページへ戻る</a>
         </div>
     </div>
 
     <script>
         let isLoginMode = true;
-        let theme = 'komarabo';
+        let theme = 'komarabo'; // 'komarabo' (light) or 'wakuwaku' (dark)
         let redirectTo = 'komarabo.html';
 
-        // URLハッシュからテーマを判定
-        function initTheme() {
-            const hash = window.location.hash.substring(1); // #を除去
+        // Elements
+        const body = document.getElementById('body');
+        const card = document.getElementById('card');
+        const inputs = document.querySelectorAll('input');
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const pageTitle = document.getElementById('pageTitle');
+        const subTitle = document.getElementById('subTitle');
+        const toggleButton = document.getElementById('toggleButton');
+
+        // Theme Definitions
+        const themes = {
+            komarabo: {
+                body: ['bg-slate-50', 'text-slate-800'],
+                card: ['bg-white', 'border', 'border-slate-100', 'shadow-slate-200'],
+                input: ['bg-slate-50', 'border-slate-200', 'text-slate-800', 'focus:ring-blue-500', 'focus:border-blue-500', 'placeholder-slate-400'],
+                btn: ['bg-blue-600', 'hover:bg-blue-700', 'shadow-blue-200'],
+                text: ['text-blue-600'], // for toggle button
+                title: '困りごとラボ',
+                subtitle: '街の課題を解決するプラットフォーム',
+                redirect: 'komarabo.html'
+            },
+            wakuwaku: {
+                body: ['bg-slate-900', 'text-slate-100'],
+                card: ['bg-slate-800', 'border', 'border-slate-700', 'shadow-slate-900'],
+                input: ['bg-slate-900', 'border-slate-600', 'text-slate-100', 'focus:ring-purple-500', 'focus:border-purple-500', 'placeholder-slate-500'],
+                btn: ['bg-purple-600', 'hover:bg-purple-700', 'shadow-purple-900/50'],
+                text: ['text-purple-400'], // for toggle button
+                title: 'ワクワク試作室',
+                subtitle: '技術とアイデアの実験場',
+                redirect: 'wakuwaku.html' // Note: wakuwaku usually redirects to post page in logic, but default base is here
+            }
+        };
+
+        function getHash() {
+            const hash = window.location.hash.substring(1);
+            return hash || 'komarabo'; // Default to komarabo if empty
+        }
+
+        // Initialize Theme based on URL Hash
+        function applyTheme() {
+            const hash = getHash();
+
             if (hash === 'wakuwaku') {
                 theme = 'wakuwaku';
-                redirectTo = 'wakuwaku-post.html';
-                document.body.className = 'theme-wakuwaku';
-                document.getElementById('pageTitle').textContent = 'ワクワク試作室 - ログイン';
+                redirectTo = 'wakuwaku-post.html'; // Override redirect for wakuwaku specific flow
             } else {
                 theme = 'komarabo';
                 redirectTo = 'komarabo.html';
-                document.body.className = 'theme-komarabo';
-                document.getElementById('pageTitle').textContent = '困りごとラボ - ログイン';
             }
+
+            const t = themes[theme];
+
+            // Reset classes
+            body.className = "min-h-screen flex items-center justify-center p-4 transition-colors duration-300";
+            card.className = "w-full max-w-md p-8 rounded-2xl shadow-xl transition-all duration-300 transform";
+
+            // Apply new classes
+            body.classList.add(...t.body);
+            card.classList.add(...t.card);
+
+            inputs.forEach(input => {
+                input.className = "w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition duration-200";
+                input.classList.add(...t.input);
+            });
+
+            [loginBtn, registerBtn].forEach(btn => {
+
+                // Remove previous specific color classes carefully or just resetbase
+                // Simplified: Re-assign base and add specific
+                btn.className = "w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition duration-200 transform hover:-translate-y-0.5 mt-2";
+                btn.classList.add(...t.btn);
+            });
+
+            toggleButton.className = "font-bold underline ml-1 hover:opacity-80 transition";
+            toggleButton.classList.add(...t.text);
+
+            // Text Content
+            pageTitle.textContent = t.title;
+            subTitle.textContent = t.subtitle;
         }
 
         function toggleForm() {
@@ -198,64 +182,67 @@
             const toggleButton = document.getElementById('toggleButton');
 
             if (isLoginMode) {
-                loginForm.style.display = 'block';
-                registerForm.style.display = 'none';
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
                 toggleText.textContent = 'アカウントをお持ちでない方は';
                 toggleButton.textContent = '新規登録';
+                loginBtn.textContent = 'ログイン'; // Ensure button text is correct
             } else {
-                loginForm.style.display = 'none';
-                registerForm.style.display = 'block';
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
                 toggleText.textContent = 'すでにアカウントをお持ちの方は';
                 toggleButton.textContent = 'ログイン';
+                registerBtn.textContent = '新規登録';
             }
         }
 
-        async function login() {
+        async function handleAuth(endpoint, payload) {
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    localStorage.setItem('user_hash', data.user_hash);
+                    localStorage.setItem('auth_token', data.auth_token || 'dummy_token');
+
+                    // Show simple feedback (using alert for now as per original, but could be toasted)
+                    // alert(data.message); 
+
+                    location.href = redirectTo;
+                } else {
+                    alert(data.message || '認証に失敗しました');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('エラーが発生しました');
+            }
+        }
+
+        function login() {
             const user_hash = document.getElementById('loginUserHash').value;
             const password = document.getElementById('loginPassword').value;
-
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_hash, password })
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-                localStorage.setItem('user_hash', data.user_hash);
-                localStorage.setItem('auth_token', data.auth_token || 'dummy_token');
-                alert(data.message);
-                location.href = redirectTo;
-            } else {
-                alert(data.message);
-            }
+            handleAuth('/api/login', { user_hash, password });
         }
 
-        async function register() {
+        function register() {
             const user_hash = document.getElementById('registerUserHash').value;
             const password = document.getElementById('registerPassword').value;
-
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_hash, password })
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-                localStorage.setItem('user_hash', data.user_hash);
-                localStorage.setItem('auth_token', data.auth_token || 'dummy_token');
-                alert(data.message);
-                location.href = redirectTo;
-            } else {
-                alert(data.message);
-            }
+            handleAuth('/api/login', { user_hash, password }); // Assuming same endpoint handles registration if new user? 
+            // Original code used same endpoint. Usually registration might be separate or flag based, 
+            // but checking original implementation: logic seems to be "get or create" or handled by backend.
+            // Keeping as is.
         }
 
-        // ページ読み込み時にテーマを初期化
-        initTheme();
+        // Event Listeners for Hash Change (to support back button or manual URL change without reload)
+        window.addEventListener('hashchange', applyTheme);
+
+        // Initial Load
+        applyTheme();
     </script>
 </body>
 
