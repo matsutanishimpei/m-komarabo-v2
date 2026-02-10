@@ -38,7 +38,7 @@ auth.post('/login', async (c) => {
                 auth_token: 'dummy_token_' + Date.now()
             });
         } catch (e) {
-            return c.json({ success: false, message: '登録に失敗しました' }, 500);
+            return c.json({ success: false, message: '登録に失敗しました: ' + (e instanceof Error ? e.message : String(e)) }, 500);
         }
     }
 
