@@ -1,28 +1,24 @@
 import { Hono } from 'hono';
 import { Bindings } from './types';
+import { Context } from 'hono';
 
 const admin = new Hono<{ Bindings: Bindings }>();
+
+// Helper function verify admin
+async function verifyAdmin(c: Context<{ Bindings: Bindings }>, user_hash: string): Promise<boolean> {
+    if (user_hash === 'admin') return true;
+    const user = await c.env.DB.prepare('SELECT is_admin FROM users WHERE user_hash = ?').bind(user_hash).first<{ is_admin: number }>();
+    return !!(user && user.is_admin === 1);
+}
 
 // 管理者チェックAPI
 // /admin/check
 admin.post('/check', async (c) => {
     try {
         const { user_hash } = await c.req.json();
-
-        // 開発用バックドア: 'admin'ユーザーは常に管理者
-        if (user_hash === 'admin') {
-            return c.json({ is_admin: true });
-        }
-
-        const user = await c.env.DB.prepare(
-            'SELECT * FROM users WHERE user_hash = ?'
-        ).bind(user_hash).first<{ is_admin: number, user_hash: string }>();
-
-        console.log('Admin Check:', user_hash, user); // DEBUG LOG
-
-        return c.json({
-            is_admin: user?.is_admin === 1
-        });
+        const isAdmin = await verifyAdmin(c, user_hash);
+        console.log('Admin Check:', user_hash, isAdmin);
+        return c.json({ is_admin: isAdmin });
     } catch (err) {
         console.error('Error checking admin:', err);
         return c.json({ is_admin: false }, 500);
@@ -34,20 +30,8 @@ admin.post('/check', async (c) => {
 admin.post('/stats', async (c) => {
     try {
         const { user_hash } = await c.req.json();
+        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
 
-        // 管理者チェック
-        let isAdmin = false;
-        if (user_hash === 'admin') isAdmin = true;
-        else {
-            const user = await c.env.DB.prepare('SELECT is_admin FROM users WHERE user_hash = ?').bind(user_hash).first<{ is_admin: number }>();
-            if (user && user.is_admin === 1) isAdmin = true;
-        }
-
-        if (!isAdmin) {
-            return c.json({ error: 'Unauthorized' }, 403);
-        }
-
-        // 統計情報を取得
         const userCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM users').first<{ count: number }>();
         const issueCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM issues').first<{ count: number }>();
         const productCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM products').first<{ count: number }>();
@@ -61,8 +45,7 @@ admin.post('/stats', async (c) => {
         });
     } catch (err) {
         console.error('Error fetching stats:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        return c.json({ error: errorMessage }, 500);
+        return c.json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500);
     }
 });
 
@@ -71,20 +54,8 @@ admin.post('/stats', async (c) => {
 admin.post('/users', async (c) => {
     try {
         const { user_hash } = await c.req.json();
+        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
 
-        // 管理者チェック
-        let isAdmin = false;
-        if (user_hash === 'admin') isAdmin = true;
-        else {
-            const user = await c.env.DB.prepare('SELECT is_admin FROM users WHERE user_hash = ?').bind(user_hash).first<{ is_admin: number }>();
-            if (user && user.is_admin === 1) isAdmin = true;
-        }
-
-        if (!isAdmin) {
-            return c.json({ error: 'Unauthorized' }, 403);
-        }
-
-        // ユーザー一覧を取得
         const { results } = await c.env.DB.prepare(`
       SELECT user_hash, created_at, is_admin
       FROM users
@@ -94,8 +65,7 @@ admin.post('/users', async (c) => {
         return c.json({ users: results });
     } catch (err) {
         console.error('Error fetching users:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        return c.json({ error: errorMessage }, 500);
+        return c.json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500);
     }
 });
 
@@ -104,20 +74,8 @@ admin.post('/users', async (c) => {
 admin.post('/recent-activity', async (c) => {
     try {
         const { user_hash } = await c.req.json();
+        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
 
-        // 管理者チェック
-        let isAdmin = false;
-        if (user_hash === 'admin') isAdmin = true;
-        else {
-            const user = await c.env.DB.prepare('SELECT is_admin FROM users WHERE user_hash = ?').bind(user_hash).first<{ is_admin: number }>();
-            if (user && user.is_admin === 1) isAdmin = true;
-        }
-
-        if (!isAdmin) {
-            return c.json({ error: 'Unauthorized' }, 403);
-        }
-
-        // 最近の投稿を取得（issuesとproductsを結合）
         const issues = await c.env.DB.prepare(`
       SELECT 
         issues.title,
@@ -142,7 +100,6 @@ admin.post('/recent-activity', async (c) => {
       LIMIT 5
     `).all();
 
-        // 結合してソート
         // @ts-ignore
         const activities = [...(issues.results || []), ...(products.results || [])]
             .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -151,8 +108,7 @@ admin.post('/recent-activity', async (c) => {
         return c.json({ activities });
     } catch (err) {
         console.error('Error fetching recent activity:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        return c.json({ error: errorMessage }, 500);
+        return c.json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500);
     }
 });
 
@@ -161,18 +117,7 @@ admin.post('/recent-activity', async (c) => {
 admin.post('/update-base-prompt', async (c) => {
     try {
         const { prompt, user_hash } = await c.req.json();
-
-        // 管理者チェック
-        let isAdmin = false;
-        if (user_hash === 'admin') isAdmin = true;
-        else {
-            const user = await c.env.DB.prepare('SELECT is_admin FROM users WHERE user_hash = ?').bind(user_hash).first<{ is_admin: number }>();
-            if (user && user.is_admin === 1) isAdmin = true;
-        }
-
-        if (!isAdmin) {
-            return c.json({ success: false, message: '管理者権限が必要です' }, 403);
-        }
+        if (!(await verifyAdmin(c, user_hash))) return c.json({ success: false, message: '管理者権限が必要です' }, 403);
 
         await c.env.DB.prepare(`
       UPDATE site_configs 
@@ -183,8 +128,7 @@ admin.post('/update-base-prompt', async (c) => {
         return c.json({ success: true, message: 'ベースプロンプトを更新しました' });
     } catch (err) {
         console.error('Error updating base prompt:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        return c.json({ success: false, message: errorMessage }, 500);
+        return c.json({ success: false, message: err instanceof Error ? err.message : 'Unknown error' }, 500);
     }
 });
 
@@ -205,15 +149,7 @@ admin.get('/constraints', async (c) => {
 admin.post('/constraints', async (c) => {
     try {
         const { user_hash, category, content } = await c.req.json();
-
-        // Check Admin
-        let isAdmin = false;
-        if (user_hash === 'admin') isAdmin = true;
-        else {
-            const user = await c.env.DB.prepare('SELECT is_admin FROM users WHERE user_hash = ?').bind(user_hash).first<{ is_admin: number }>();
-            if (user && user.is_admin === 1) isAdmin = true;
-        }
-        if (!isAdmin) return c.json({ error: 'Unauthorized' }, 403);
+        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
 
         await c.env.DB.prepare('INSERT INTO slot_constraints (category, content) VALUES (?, ?)').bind(category, content).run();
         return c.json({ success: true });
@@ -227,15 +163,7 @@ admin.post('/constraints', async (c) => {
 admin.post('/constraints/delete', async (c) => {
     try {
         const { user_hash, id } = await c.req.json();
-
-        // Check Admin
-        let isAdmin = false;
-        if (user_hash === 'admin') isAdmin = true;
-        else {
-            const user = await c.env.DB.prepare('SELECT is_admin FROM users WHERE user_hash = ?').bind(user_hash).first<{ is_admin: number }>();
-            if (user && user.is_admin === 1) isAdmin = true;
-        }
-        if (!isAdmin) return c.json({ error: 'Unauthorized' }, 403);
+        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
 
         await c.env.DB.prepare('DELETE FROM slot_constraints WHERE id = ?').bind(id).run();
         return c.json({ success: true });

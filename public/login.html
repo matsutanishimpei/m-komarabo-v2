@@ -138,10 +138,17 @@
 
             if (hash === 'wakuwaku') {
                 theme = 'wakuwaku';
-                redirectTo = '/wakuwaku/index.html'; // Override redirect for wakuwaku specific flow
+                redirectTo = '/wakuwaku/index.html';
             } else {
                 theme = 'komarabo';
                 redirectTo = '/komarabo/index.html';
+            }
+
+            // URL Parameter Override
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectParam = urlParams.get('redirect_to');
+            if (redirectParam) {
+                redirectTo = decodeURIComponent(redirectParam);
             }
 
             const t = themes[theme];
