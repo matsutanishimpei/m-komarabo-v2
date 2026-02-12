@@ -83,7 +83,7 @@ admin.post('/recent-activity', async (c) => {
         users.user_hash,
         'コマラボ' as type
       FROM issues
-      JOIN users ON issues.user_id = users.id
+      JOIN users ON issues.requester_id = users.id
       ORDER BY issues.created_at DESC
       LIMIT 5
     `).all();
