@@ -21,7 +21,120 @@ wakuwaku.get('/base-prompt', async (c) => {
     }
 });
 
-// プロダクト一覧取得API
+// ランダムな制約を取得 (Ideation)
+wakuwaku.get('/constraints/random', async (c) => {
+    try {
+        const constraint = await c.env.DB.prepare('SELECT * FROM slot_constraints ORDER BY RANDOM() LIMIT 1').first();
+        return c.json(constraint || { category: 'Default', content: '制約なし' });
+    } catch (err) {
+        return c.json({ category: 'Error', content: '制約取得エラー' });
+    }
+});
+
+// ドラフト作成 (Development - Start)
+wakuwaku.post('/drafts', async (c) => {
+    try {
+        const { title, user_hash } = await c.req.json();
+        if (!title || !user_hash) return c.json({ success: false, message: 'タイトルとユーザーハッシュは必須です' }, 400);
+
+        const user = await c.env.DB.prepare('SELECT id FROM users WHERE user_hash = ?').bind(user_hash).first<{ id: number }>();
+        if (!user) return c.json({ success: false, message: 'ユーザーが見つかりません' }, 404);
+
+        const res = await c.env.DB.prepare(
+            "INSERT INTO products (creator_id, title, status) VALUES (?, ?, 'draft')"
+        ).bind(user.id, title).run();
+
+        return c.json({ success: true, id: res.meta.last_row_id });
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        return c.json({ success: false, message: msg }, 500);
+    }
+});
+
+// マイ・ドラフト一覧取得 (Development - Manage)
+wakuwaku.get('/drafts', async (c) => {
+    const user_hash = c.req.query('user_hash');
+    if (!user_hash) return c.json([]);
+
+    const { results } = await c.env.DB.prepare(`
+        SELECT products.* 
+        FROM products 
+        JOIN users ON products.creator_id = users.id 
+        WHERE users.user_hash = ? AND products.status = 'draft'
+        ORDER BY products.created_at DESC
+    `).bind(user_hash).all();
+    return c.json(results || []);
+});
+
+// ドラフト保存 (Development - Save Draft)
+wakuwaku.post('/drafts/save', async (c) => {
+    try {
+        const { id, user_hash, url, dev_obsession } = await c.req.json(); // dev_obsession as memo
+
+        // ユーザー確認
+        const product = await c.env.DB.prepare(`
+            SELECT products.*, users.user_hash 
+            FROM products 
+            JOIN users ON products.creator_id = users.id 
+            WHERE products.id = ?
+        `).bind(id).first<{ user_hash: string }>();
+
+        if (!product || product.user_hash !== user_hash) {
+            return c.json({ success: false, message: '権限がありません' }, 403);
+        }
+
+        await c.env.DB.prepare(`
+            UPDATE products SET url = ?, dev_obsession = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        `).bind(url || null, dev_obsession || null, id).run();
+
+        return c.json({ success: true });
+    } catch (err) {
+        return c.json({ success: false, message: '保存失敗' }, 500);
+    }
+});
+
+// 封印 (Development - Seal)
+wakuwaku.post('/seal', async (c) => {
+    try {
+        const { id, user_hash, protocol_log, dialogue_log, catch_copy } = await c.req.json();
+
+        // 必須チェック
+        if (!protocol_log || !dialogue_log) {
+            return c.json({ success: false, message: '仕様書と対話ログは必須です' }, 400);
+        }
+
+        // ユーザー確認
+        const product = await c.env.DB.prepare(`
+            SELECT products.*, users.user_hash 
+            FROM products 
+            JOIN users ON products.creator_id = users.id 
+            WHERE products.id = ?
+        `).bind(id).first<{ user_hash: string }>();
+
+        if (!product || product.user_hash !== user_hash) {
+            return c.json({ success: false, message: '権限がありません' }, 403);
+        }
+
+        // 更新して公開
+        // protocol_log -> protocol_log column
+        // dialogue_log -> dialogue_log column
+        // catch_copy -> catch_copy column
+        // status -> 'published'
+        // sealed_at -> CURRENT_TIMESTAMP
+        await c.env.DB.prepare(`
+            UPDATE products 
+            SET protocol_log = ?, dialogue_log = ?, catch_copy = ?, status = 'published', sealed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        `).bind(protocol_log, dialogue_log, catch_copy || null, id).run();
+
+        return c.json({ success: true, message: '封印完了' });
+    } catch (err) {
+        return c.json({ success: false, message: '封印失敗: ' + err }, 500);
+    }
+});
+
+
+// プロダクト一覧取得API (Archive)
 wakuwaku.get('/products', async (c) => {
     const { results } = await c.env.DB.prepare(`
     SELECT 
@@ -30,13 +143,13 @@ wakuwaku.get('/products', async (c) => {
     FROM products
     JOIN users ON products.creator_id = users.id
     WHERE products.status = 'published'
-    ORDER BY products.created_at DESC
-  `).all();
+    ORDER BY products.sealed_at DESC
+  `).all(); // Sort by sealed_at as per requirement (chronological order of submission)
 
     return c.json(results || []);
 });
 
-// プロダクト詳細取得API
+// プロダクト詳細取得API (Archive Detail)
 wakuwaku.get('/product/:id', async (c) => {
     const id = c.req.param('id');
 
@@ -56,75 +169,7 @@ wakuwaku.get('/product/:id', async (c) => {
     return c.json(product);
 });
 
-// プロダクト投稿API
-wakuwaku.post('/post-product', async (c) => {
-    try {
-        const { title, url, initial_prompt_log, dev_obsession, user_hash } = await c.req.json();
-
-        // バリデーション
-        if (!title || !initial_prompt_log) {
-            return c.json({ success: false, message: 'タイトルと初期衝動履歴は必須です' }, 400);
-        }
-
-        // ユーザー確認
-        const user = await c.env.DB.prepare(
-            'SELECT id FROM users WHERE user_hash = ?'
-        ).bind(user_hash).first<{ id: number }>();
-
-        if (!user) {
-            return c.json({ success: false, message: 'ユーザーが見つかりません' }, 404);
-        }
-
-        // プロダクト作成
-        // sealed_at を使って「修正不可」にする魂のロジックをここに集約
-        await c.env.DB.prepare(`
-      INSERT INTO products (creator_id, title, url, initial_prompt_log, dev_obsession, sealed_at)
-      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `).bind(user.id, title, url || null, initial_prompt_log, dev_obsession || null).run();
-
-        return c.json({ success: true, message: '初期衝動を封印しました' });
-    } catch (err) {
-        console.error('Error posting product:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        return c.json({ success: false, message: 'プロダクトの投稿に失敗しました: ' + errorMessage }, 500);
-    }
-});
-
-// プロダクト更新API（initial_prompt_logは更新不可）
-wakuwaku.post('/update-product', async (c) => {
-    const { id, title, url, dev_obsession, user_hash } = await c.req.json();
-
-    // 既存プロダクト確認
-    const existingProduct = await c.env.DB.prepare(`
-    SELECT products.*, users.user_hash
-    FROM products
-    JOIN users ON products.creator_id = users.id
-    WHERE products.id = ?
-  `).bind(id).first<{ user_hash: string }>();
-
-    if (!existingProduct) {
-        return c.json({ success: false, message: 'プロダクトが見つかりません' }, 404);
-    }
-
-    // 投稿者本人確認
-    if (existingProduct.user_hash !== user_hash) {
-        return c.json({ success: false, message: '自分の投稿のみ編集できます' }, 403);
-    }
-
-    // initial_prompt_logの更新を試みた場合はエラー
-    // （フロントエンドでは送信しないが、念のため）
-
-    // 更新（initial_prompt_logとsealed_atは除外）
-    await c.env.DB.prepare(`
-    UPDATE products 
-    SET title = ?, url = ?, dev_obsession = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).bind(title, url || null, dev_obsession || null, id).run();
-
-    return c.json({ success: true, message: 'プロダクトを更新しました' });
-});
-
-// プロダクト削除API
+// プロダクト削除API (Keep for cleanup)
 wakuwaku.post('/delete-product', async (c) => {
     try {
         const { id, user_hash } = await c.req.json();
