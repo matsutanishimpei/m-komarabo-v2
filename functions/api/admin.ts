@@ -169,4 +169,50 @@ admin.post('/update-base-prompt', async (c) => {
     }
 });
 
+
+// スロット制約一覧取得API
+// /admin/constraints
+admin.get('/constraints', async (c) => {
+    try {
+        const { results } = await c.env.DB.prepare('SELECT * FROM slot_constraints ORDER BY id DESC').all();
+        return c.json(results);
+    } catch (err) {
+        return c.json({ error: 'Failed to fetch constraints' }, 500);
+    }
+});
+
+// スロット制約追加API
+// /admin/constraints
+admin.post('/constraints', async (c) => {
+    try {
+        const { user_hash, category, content } = await c.req.json();
+
+        // Check Admin
+        const user = await c.env.DB.prepare('SELECT is_admin FROM users WHERE user_hash = ?').bind(user_hash).first<{ is_admin: number }>();
+        if (!user || user.is_admin !== 1) return c.json({ error: 'Unauthorized' }, 403);
+
+        await c.env.DB.prepare('INSERT INTO slot_constraints (category, content) VALUES (?, ?)').bind(category, content).run();
+        return c.json({ success: true });
+    } catch (err) {
+        return c.json({ error: 'Failed to add constraint' }, 500);
+    }
+});
+
+// スロット制約削除API
+// /admin/constraints/delete
+admin.post('/constraints/delete', async (c) => {
+    try {
+        const { user_hash, id } = await c.req.json();
+
+        // Check Admin
+        const user = await c.env.DB.prepare('SELECT is_admin FROM users WHERE user_hash = ?').bind(user_hash).first<{ is_admin: number }>();
+        if (!user || user.is_admin !== 1) return c.json({ error: 'Unauthorized' }, 403);
+
+        await c.env.DB.prepare('DELETE FROM slot_constraints WHERE id = ?').bind(id).run();
+        return c.json({ success: true });
+    } catch (err) {
+        return c.json({ error: 'Failed to delete constraint' }, 500);
+    }
+});
+
 export default admin;
