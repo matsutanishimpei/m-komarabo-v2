@@ -294,19 +294,22 @@
         // 制約一覧を取得
         async function loadConstraints() {
             try {
-                const data = await adminApiRequest('/api/admin/constraints');
+                const data = await adminApiRequest('/api/admin/constraints/list');
                 const list = document.getElementById('constraintList');
-                if (data) {
+                if (Array.isArray(data)) {
                     list.innerHTML = data.map(c => `
                         <div class="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-100">
                             <span class="text-xs font-bold text-gray-500 w-20">${c.category}</span>
                             <span class="text-sm text-gray-800 flex-1 truncate px-2">${c.content}</span>
-                            <button onclick="deleteConstraint(${c.id})" class="text-gray-400 hover:text-red-500">×</button>
+                            <button onclick="deleteConstraint(${c.id})" class="text-gray-400 hover:text-red-500 font-bold">×</button>
                         </div>
                     `).join('');
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error('Failed to load constraints:', e);
+            }
         }
+        window.loadConstraints = loadConstraints; // Ensure global access if needed
 
         // 制約を追加
         async function addConstraint() {
@@ -315,26 +318,33 @@
             if (!content) return;
 
             try {
+                // adminApiRequest adds user_hash automatically
                 const res = await adminApiRequest('/api/admin/constraints', {
-                    category, content, user_hash: currentUserHash
+                    category, content
                 });
                 if (res.success) {
                     document.getElementById('newConstraintContent').value = '';
                     loadConstraints();
                 }
-            } catch (e) { alert('Failed'); }
+            } catch (e) {
+                console.error(e);
+                alert('追加失敗: ' + e.message);
+            }
         }
         window.addConstraint = addConstraint;
 
         // 制約を削除
         async function deleteConstraint(id) {
-            if (!confirm('Delete?')) return;
+            if (!confirm('削除しますか？')) return;
             try {
                 const res = await adminApiRequest('/api/admin/constraints/delete', {
-                    id, user_hash: currentUserHash
+                    id
                 });
                 if (res.success) loadConstraints();
-            } catch (e) { alert('Failed'); }
+            } catch (e) {
+                console.error(e);
+                alert('削除失敗: ' + e.message);
+            }
         }
         window.deleteConstraint = deleteConstraint;
 

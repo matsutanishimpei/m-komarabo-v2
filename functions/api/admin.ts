@@ -134,9 +134,12 @@ admin.post('/update-base-prompt', async (c) => {
 
 
 // スロット制約一覧取得API
-// /admin/constraints
-admin.get('/constraints', async (c) => {
+// /admin/constraints/list
+admin.post('/constraints/list', async (c) => {
     try {
+        const { user_hash } = await c.req.json();
+        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
+
         const { results } = await c.env.DB.prepare('SELECT * FROM slot_constraints ORDER BY id DESC').all();
         return c.json(results);
     } catch (err) {
