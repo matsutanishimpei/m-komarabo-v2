@@ -154,7 +154,8 @@ admin.post('/constraints', async (c) => {
         await c.env.DB.prepare('INSERT INTO slot_constraints (category, content) VALUES (?, ?)').bind(category, content).run();
         return c.json({ success: true });
     } catch (err) {
-        return c.json({ error: 'Failed to add constraint' }, 500);
+        console.error('Error adding constraint:', err);
+        return c.json({ error: err instanceof Error ? err.message : 'Failed to add constraint' }, 500);
     }
 });
 
@@ -168,7 +169,8 @@ admin.post('/constraints/delete', async (c) => {
         await c.env.DB.prepare('DELETE FROM slot_constraints WHERE id = ?').bind(id).run();
         return c.json({ success: true });
     } catch (err) {
-        return c.json({ error: 'Failed to delete constraint' }, 500);
+        console.error('Error deleting constraint:', err);
+        return c.json({ error: err instanceof Error ? err.message : 'Failed to delete constraint' }, 500);
     }
 });
 
