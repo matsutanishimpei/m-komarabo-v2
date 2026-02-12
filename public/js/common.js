@@ -139,7 +139,7 @@ export async function apiRequest(endpoint, options = {}) {
         const data = await res.json();
 
         if (!res.ok) {
-            throw new Error(data.message || `API Error: ${res.status}`);
+            throw new Error(data.message || data.error || `API Error: ${res.status}`);
         }
 
         return data;
