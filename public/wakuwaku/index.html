@@ -305,14 +305,25 @@
             document.getElementById('constraint-category').innerText = constraint.category || 'Constraint';
             document.getElementById('constraint-content').innerText = constraint.content;
 
-            // 2. Combine to prompt
-            const seedText = `以下のテーマで、尖ったWebアプリケーションの仕様とプロトタイプコードを考えてください。
+            // 2. Get Base Prompt & Combine
+            let basePromptTemplate = '';
+            try {
+                const res = await fetch('/api/wakuwaku/base-prompt');
+                if (res.ok) {
+                    const data = await res.json();
+                    basePromptTemplate = data.prompt;
+                }
+            } catch (e) { console.error(e); }
+
+            // Fallback template if empty
+            if (!basePromptTemplate || basePromptTemplate === 'プロンプトが設定されていません') {
+                basePromptTemplate = `以下のテーマで、尖ったWebアプリケーションの仕様とプロトタイプコードを考えてください。
     
 【テーマ】
-${interest}
+{{THEME}}
 
 【絶対的な制約】
-${constraint.content}
+{{CONSTRAINT}}
 
 【出力要件】
 1. アプリのキャッチコピー
@@ -320,6 +331,14 @@ ${constraint.content}
 3. 実装するためのHTML/JSコード（単一ファイルで動作するもの）
 4. 開発者の「変執的なこだわり」ポイント
 `;
+            }
+
+            // Replace placeholders
+            // Supports {{THEME}} and {{CONSTRAINT}}
+            const seedText = basePromptTemplate
+                .replace(/{{THEME}}/g, interest)
+                .replace(/{{CONSTRAINT}}/g, constraint.content);
+
             document.getElementById('output-seed').value = seedText;
         };
 
