@@ -44,6 +44,14 @@
                 <span class="font-outfit font-bold tracking-tight text-xl text-white">ワクワク試作室</span>
             </a>
 
+            <!-- Mode Switcher (Tabs) -->
+            <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+                <button id="btn-personal" onclick="switchTab('personal')"
+                    class="px-4 py-2 rounded-lg text-sm font-bold transition">個人ラボ (My Lab)</button>
+                <button id="btn-gallery" onclick="switchTab('gallery')"
+                    class="px-4 py-2 rounded-lg text-sm font-bold transition">みんなの広場 (Gallery)</button>
+            </div>
+
             <div class="flex items-center gap-3">
                 <!-- ログイン状態表示 -->
                 <span id="loginStatus" class="text-sm text-slate-400"></span>
@@ -51,214 +59,226 @@
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-6 pb-20 space-y-20">
+    <main class="max-w-7xl mx-auto px-6 pb-20">
 
-        <!-- ①【課題生成セクション：Ideation】 -->
-        <section id="section-ideation" class="relative">
-            <div class="absolute -top-10 -left-10 w-64 h-64 bg-purple-600/20 rounded-full blur-3xl -z-10"></div>
+        <!-- Tab 1: Personal Lab (Ideation & Development) -->
+        <div id="view-personal" class="space-y-20">
+            <!-- ①【課題生成セクション：Ideation】 -->
+            <section id="section-ideation" class="relative">
+                <div class="absolute -top-10 -left-10 w-64 h-64 bg-purple-600/20 rounded-full blur-3xl -z-10"></div>
 
-            <div class="flex items-baseline gap-4 mb-6 border-b border-slate-800 pb-2">
-                <h2
-                    class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-                    01. Ideation
-                </h2>
-                <p class="text-sm text-slate-400">外部知能との対話の種を生成する</p>
-            </div>
+                <div class="flex items-baseline gap-4 mb-6 border-b border-slate-800 pb-2">
+                    <h2
+                        class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                        01. Ideation
+                    </h2>
+                    <p class="text-sm text-slate-400">外部知能との対話の種を生成する</p>
+                </div>
 
-            <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 backdrop-blur-sm">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                    <!-- Config -->
-                    <div class="space-y-6">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                                興味・関心 / 執着
-                            </label>
-                            <input type="text" id="input-interest" placeholder="最近気になっていること、解決したい悩み..."
-                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 outline-none transition placeholder-slate-600">
-                        </div>
-
-                        <div class="p-4 bg-slate-950/50 rounded-xl border border-dashed border-slate-700">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">制約スロット</span>
-                                <span id="constraint-category"
-                                    class="text-[10px] px-2 py-0.5 bg-slate-800 rounded text-slate-400">準備完了</span>
+                <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 backdrop-blur-sm">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                        <!-- Config -->
+                        <div class="space-y-6">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                                    興味・関心 / 執着
+                                </label>
+                                <input type="text" id="input-interest" placeholder="最近気になっていること、解決したい悩み..."
+                                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 outline-none transition placeholder-slate-600">
                             </div>
-                            <p id="constraint-content" class="text-lg font-mono text-purple-300 min-h-[1.75rem]">???</p>
-                        </div>
 
-                        <button onclick="generateSeed()"
-                            class="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition shadow-lg shadow-purple-900/50 flex justify-center items-center gap-2">
-                            <span class="text-xl">🎰</span> <span class="tracking-wider">テーマを生成</span>
-                        </button>
-                    </div>
-
-                    <!-- Result -->
-                    <div class="h-full flex flex-col">
-                        <label
-                            class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">生成されたプロンプトシード</label>
-                        <div class="flex-1 bg-black/30 rounded-xl p-4 border border-slate-700 relative group mb-4">
-                            <textarea id="output-seed" readonly
-                                class="w-full h-32 bg-transparent text-slate-300 resize-none outline-none font-mono text-sm leading-relaxed"
-                                placeholder="生成ボタンを押してください..."></textarea>
-
-                            <div
-                                class="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onclick="copySeed()"
-                                    class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg transition">
-                                    プロンプトをコピー
-                                </button>
+                            <div class="p-4 bg-slate-950/50 rounded-xl border border-dashed border-slate-700">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span
+                                        class="text-xs font-bold text-slate-400 uppercase tracking-widest">制約スロット</span>
+                                    <span id="constraint-category"
+                                        class="text-[10px] px-2 py-0.5 bg-slate-800 rounded text-slate-400">準備完了</span>
+                                </div>
+                                <p id="constraint-content" class="text-lg font-mono text-purple-300 min-h-[1.75rem]">???
+                                </p>
                             </div>
-                        </div>
 
-                        <!-- Create Project Button -->
-                        <div id="action-create-project"
-                            class="opacity-50 pointer-events-none transition-opacity duration-300">
-                            <p class="text-[10px] text-slate-500 mb-2 text-center">
-                                このシードで開発を進めますか？
-                            </p>
-                            <button onclick="createProjectFromSeed()"
-                                class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-900/50 flex justify-center items-center gap-2">
-                                <span>🚀</span> このテーマでプロジェクトを開始する
+                            <button onclick="generateSeed()"
+                                class="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition shadow-lg shadow-purple-900/50 flex justify-center items-center gap-2">
+                                <span class="text-xl">🎰</span> <span class="tracking-wider">テーマを生成</span>
                             </button>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </section>
 
-        <!-- ②【制作・管理セクション：Development】 -->
-        <section id="section-development" class="relative">
-            <div class="absolute -top-10 -right-10 w-64 h-64 bg-blue-600/20 rounded-full blur-3xl -z-10"></div>
+                        <!-- Result -->
+                        <div class="h-full flex flex-col">
+                            <label
+                                class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">生成されたプロンプトシード</label>
+                            <div class="flex-1 bg-black/30 rounded-xl p-4 border border-slate-700 relative group mb-4">
+                                <textarea id="output-seed" readonly
+                                    class="w-full h-32 bg-transparent text-slate-300 resize-none outline-none font-mono text-sm leading-relaxed"
+                                    placeholder="生成ボタンを押してください..."></textarea>
 
-            <div class="flex items-baseline gap-4 mb-6 border-b border-slate-800 pb-2">
-                <h2 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
-                    02. Development
-                </h2>
-                <p class="text-sm text-slate-400">形にする。魂を込める。</p>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Task List -->
-                <div class="lg:col-span-1 space-y-4">
-                    <div class="flex justify-between items-center">
-                        <h3 class="font-bold text-slate-300">マイプロジェクト</h3>
-                        <a href="#section-ideation" onclick="document.getElementById('input-interest').focus()"
-                            class="text-xs bg-slate-800 text-slate-400 px-3 py-1.5 rounded hover:bg-slate-700 transition flex items-center gap-1">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4v16m8-8H4">
-                                </path>
-                            </svg>
-                            新規作成 (Ideationへ)
-                        </a>
-                    </div>
-                    <div id="draft-list" class="space-y-3 min-h-[200px]">
-                        <!-- Draft Items -->
-                        <div class="text-center py-10 text-slate-600 text-sm">進行中のドラフトはありません</div>
-                    </div>
-                </div>
-
-                <!-- Editor -->
-                <div
-                    class="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-2xl p-8 backdrop-blur-sm relative">
-                    <div id="editor-overlay"
-                        class="absolute inset-0 bg-slate-950/80 z-10 flex items-center justify-center rounded-2xl">
-                        <p class="text-slate-500">左のリストからプロジェクトを選択するか、<br>Ideationで新しいテーマを生成してください</p>
-                    </div>
-
-                    <div class="space-y-6">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <label
-                                    class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">プロジェクト名</label>
-                                <input type="text" id="edit-title"
-                                    class="w-full bg-transparent text-xl font-bold text-white border-b border-transparent focus:border-slate-600 outline-none transition"
-                                    readonly>
-                            </div>
-                            <span
-                                class="px-2 py-1 bg-amber-500/10 text-amber-500 text-xs rounded border border-amber-500/20">下書き</span>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">URL
-                                    (任意)</label>
-                                <input type="text" id="edit-url" placeholder="https://..."
-                                    class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">メモ
-                                    / こだわり</label>
-                                <input type="text" id="edit-memo" placeholder="開発メモやこだわり..."
-                                    class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none">
-                            </div>
-                        </div>
-
-                        <div class="pt-4 border-t border-slate-700">
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="font-bold text-slate-300 text-sm">提出データ (最終化)</h4>
-                                <button onclick="saveDraft()"
-                                    class="text-xs text-slate-400 hover:text-white transition flex items-center gap-1">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
-                                        </path>
-                                    </svg>
-                                    下書き保存
-                                </button>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label
-                                        class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">仕様書
-                                        (Protocol)</label>
-                                    <textarea id="edit-protocol" rows="4"
-                                        class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
-                                        placeholder="AIが生成した仕様書を貼り付け"></textarea>
-                                </div>
-                                <div>
-                                    <label
-                                        class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">対話ログ
-                                        (Dialogue Log)</label>
-                                    <textarea id="edit-dialogue" rows="4"
-                                        class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
-                                        placeholder="AIとの対話ログを貼り付け"></textarea>
+                                <div
+                                    class="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onclick="copySeed()"
+                                        class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg transition">
+                                        プロンプトをコピー
+                                    </button>
                                 </div>
                             </div>
 
-                            <div>
-                                <label
-                                    class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">一言キャッチコピー</label>
-                                <input type="text" id="edit-catchcopy" placeholder="この作品を一言で表すと？"
-                                    class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none">
+                            <!-- Create Project Button -->
+                            <div id="action-create-project"
+                                class="opacity-50 pointer-events-none transition-opacity duration-300">
+                                <p class="text-[10px] text-slate-500 mb-2 text-center">
+                                    このシードで開発を進めますか？
+                                </p>
+                                <button onclick="createProjectFromSeed()"
+                                    class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-900/50 flex justify-center items-center gap-2">
+                                    <span>🚀</span> このテーマでプロジェクトを開始する
+                                </button>
                             </div>
-
-                            <button onclick="sealProduct()"
-                                class="w-full mt-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-900/50">
-                                封印する (提出 & アーカイブ)
-                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- ③【ナラティブ一覧セクション：Archive】 -->
-        <section id="section-archive" class="relative">
-            <div class="flex items-baseline gap-4 mb-6 border-b border-slate-800 pb-2">
-                <h2
-                    class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">
-                    03. Archive
-                </h2>
-                <p class="text-sm text-slate-400">ナレッジの結晶。</p>
-            </div>
+            <!-- ②【制作・管理セクション：Development】 -->
+            <section id="section-development" class="relative">
+                <div class="absolute -top-10 -right-10 w-64 h-64 bg-blue-600/20 rounded-full blur-3xl -z-10"></div>
 
-            <div id="archive-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Archive Items will be loaded here -->
-                <div class="col-span-full text-center py-20 text-slate-600">アーカイブを読み込み中...</div>
-            </div>
-        </section>
+                <div class="flex items-baseline gap-4 mb-6 border-b border-slate-800 pb-2">
+                    <h2
+                        class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
+                        02. Development
+                    </h2>
+                    <p class="text-sm text-slate-400">形にする。魂を込める。</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Task List -->
+                    <div class="lg:col-span-1 space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-slate-300">マイプロジェクト</h3>
+                            <a href="#section-ideation" onclick="document.getElementById('input-interest').focus()"
+                                class="text-xs bg-slate-800 text-slate-400 px-3 py-1.5 rounded hover:bg-slate-700 transition flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4v16m8-8H4">
+                                    </path>
+                                </svg>
+                                新規作成 (Ideationへ)
+                            </a>
+                        </div>
+                        <div id="draft-list" class="space-y-3 min-h-[200px]">
+                            <!-- Draft Items -->
+                            <div class="text-center py-10 text-slate-600 text-sm">進行中のドラフトはありません</div>
+                        </div>
+                    </div>
+
+                    <!-- Editor -->
+                    <div
+                        class="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-2xl p-8 backdrop-blur-sm relative">
+                        <div id="editor-overlay"
+                            class="absolute inset-0 bg-slate-950/80 z-10 flex items-center justify-center rounded-2xl">
+                            <p class="text-slate-500">左のリストからプロジェクトを選択するか、<br>Ideationで新しいテーマを生成してください</p>
+                        </div>
+
+                        <div class="space-y-6">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <label
+                                        class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">プロジェクト名</label>
+                                    <input type="text" id="edit-title"
+                                        class="w-full bg-transparent text-xl font-bold text-white border-b border-transparent focus:border-slate-600 outline-none transition"
+                                        readonly>
+                                </div>
+                                <span
+                                    class="px-2 py-1 bg-amber-500/10 text-amber-500 text-xs rounded border border-amber-500/20">下書き</span>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">URL
+                                        (任意)</label>
+                                    <input type="text" id="edit-url" placeholder="https://..."
+                                        class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">メモ
+                                        /
+                                        こだわり</label>
+                                    <input type="text" id="edit-memo" placeholder="開発メモやこだわり..."
+                                        class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none">
+                                </div>
+                            </div>
+
+                            <div class="pt-4 border-t border-slate-700">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h4 class="font-bold text-slate-300 text-sm">提出データ (最終化)</h4>
+                                    <button onclick="saveDraft()"
+                                        class="text-xs text-slate-400 hover:text-white transition flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
+                                            </path>
+                                        </svg>
+                                        下書き保存
+                                    </button>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label
+                                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">仕様書
+                                            (Protocol)</label>
+                                        <textarea id="edit-protocol" rows="4"
+                                            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+                                            placeholder="AIが生成した仕様書を貼り付け"></textarea>
+                                    </div>
+                                    <div>
+                                        <label
+                                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">対話ログ
+                                            (Dialogue Log)</label>
+                                        <textarea id="edit-dialogue" rows="4"
+                                            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+                                            placeholder="AIとの対話ログを貼り付け"></textarea>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label
+                                        class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">一言キャッチコピー</label>
+                                    <input type="text" id="edit-catchcopy" placeholder="この作品を一言で表すと？"
+                                        class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none">
+                                </div>
+
+                                <button onclick="sealProduct()"
+                                    class="w-full mt-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-900/50">
+                                    封印する (提出 & アーカイブ)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Tab 2: Gallery (Archive) -->
+        <div id="view-gallery" class="hidden">
+            <!-- ③【ナラティブ一覧セクション：Archive】 -->
+            <section id="section-archive" class="relative">
+                <div class="flex items-baseline gap-4 mb-6 border-b border-slate-800 pb-2">
+                    <h2
+                        class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">
+                        みんなの広場 (Gallery)
+                    </h2>
+                    <p class="text-sm text-slate-400">初期衝動のアーカイブ。</p>
+                </div>
+
+                <div id="archive-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Archive Items will be loaded here -->
+                    <div class="col-span-full text-center py-20 text-slate-600">アーカイブを読み込み中...</div>
+                </div>
+            </section>
+        </div>
 
     </main>
 
@@ -294,9 +314,40 @@
             }
             // Always load archives
             loadArchives();
+
+            // Set default tab
+            switchTab('personal');
         }
 
         window.handleLogout = () => commonLogout('/wakuwaku/index.html');
+
+        // --- Tab Logic ---
+        function switchTab(tab) {
+            const btnPersonal = document.getElementById('btn-personal');
+            const btnGallery = document.getElementById('btn-gallery');
+            const viewPersonal = document.getElementById('view-personal');
+            const viewGallery = document.getElementById('view-gallery');
+
+            if (tab === 'personal') {
+                btnPersonal.classList.add('bg-purple-600', 'text-white', 'shadow-md');
+                btnPersonal.classList.remove('text-slate-400');
+                btnGallery.classList.remove('bg-purple-600', 'text-white', 'shadow-md');
+                btnGallery.classList.add('text-slate-400');
+                btnGallery.classList.remove('bg-emerald-600', 'text-white', 'shadow-md'); // ensure reset
+
+                viewPersonal.classList.remove('hidden');
+                viewGallery.classList.add('hidden');
+            } else {
+                btnGallery.classList.add('bg-emerald-600', 'text-white', 'shadow-md');
+                btnGallery.classList.remove('text-slate-400');
+                btnPersonal.classList.remove('bg-purple-600', 'text-white', 'shadow-md');
+                btnPersonal.classList.add('text-slate-400');
+
+                viewGallery.classList.remove('hidden');
+                viewPersonal.classList.add('hidden');
+            }
+        }
+        window.switchTab = switchTab;
 
         // --- Ideation Logic ---
         window.generateSeed = async () => {
@@ -326,7 +377,6 @@
                 }
             } catch (e) { console.error(e); }
 
-            // Fallback template if empty
             if (!basePromptTemplate || basePromptTemplate === 'プロンプトが設定されていません') {
                 basePromptTemplate = `以下のテーマで、尖ったWebアプリケーションの仕様とプロトタイプコードを考えてください。
     
@@ -344,15 +394,12 @@
 `;
             }
 
-            // Replace placeholders
-            // Supports {{THEME}} and {{CONSTRAINT}}
             const seedText = basePromptTemplate
                 .replace(/{{THEME}}/g, interest)
                 .replace(/{{CONSTRAINT}}/g, constraint.content);
 
             document.getElementById('output-seed').value = seedText;
 
-            // Enable the create project button
             const btnArea = document.getElementById('action-create-project');
             btnArea.classList.remove('opacity-50', 'pointer-events-none');
         };
@@ -384,24 +431,13 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    // Success!
-                    // 1. Refresh drafts
                     await loadDrafts();
-
-                    // 2. Find the newly created draft (assuming it's the first one or finding by ID if API returns it)
-                    // The API returns { success: true } typically. We can assume the newest one is at top or valid
-                    // For better UX, we'll try to find the draft that matches the title we just created, or valid ID if available.
-                    // Ideally API should return ID. Assuming data.id or we just pick the latest.
-
-                    // Let's scroll to development section
+                    // Personal tab is already active
                     document.getElementById('section-development').scrollIntoView({ behavior: 'smooth' });
-
-                    // 3. Highlight/Select it (Hack: wait for DOM update and click the first one)
                     setTimeout(() => {
                         const firstDraft = document.querySelector('#draft-list > div');
                         if (firstDraft) firstDraft.click();
                     }, 500);
-
                 } else {
                     alert('失敗しました: ' + data.message);
                 }
@@ -424,7 +460,6 @@
                 }
 
                 container.innerHTML = drafts.map(d => {
-                    // Escape json for onclick
                     const json = JSON.stringify(d).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
                     return `
                     <div onclick='window.selectDraft(${json})' 
@@ -441,7 +476,7 @@
             document.getElementById('editor-overlay').classList.add('hidden');
             document.getElementById('edit-title').value = draft.title;
             document.getElementById('edit-url').value = draft.url || '';
-            document.getElementById('edit-memo').value = draft.dev_obsession || ''; // using dev_obsession as memo
+            document.getElementById('edit-memo').value = draft.dev_obsession || '';
             document.getElementById('edit-protocol').value = draft.protocol_log || '';
             document.getElementById('edit-dialogue').value = draft.dialogue_log || '';
             document.getElementById('edit-catchcopy').value = draft.catch_copy || '';
@@ -499,6 +534,12 @@
                     document.getElementById('editor-overlay').classList.remove('hidden');
                     loadDrafts();
                     loadArchives();
+
+                    // Switch to gallery to show result? No, stay here for now or user might want to see it.
+                    // But requirement says archive is in Gallery tab.
+                    if (confirm('封印しました。みんなの広場 (Gallery) で確認しますか？')) {
+                        switchTab('gallery');
+                    }
                 } else {
                     alert('エラー: ' + data.message);
                 }
@@ -517,29 +558,41 @@
                     return;
                 }
 
-                grid.innerHTML = products.map(p => `
-                    <a href="detail.html?id=${p.id}" class="section-card block bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10 group">
-                        <div class="h-2 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
-                        <div class="p-6">
-                            <div class="flex justify-between items-start mb-4">
-                                <span class="text-[10px] font-mono text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded border border-emerald-500/20">
-                                    封印済み: ${new Date(p.sealed_at).toLocaleDateString()}
+                grid.innerHTML = products.map(p => {
+                    // Truncate hash for display
+                    const creatorDisplay = p.creator_user_hash
+                        ? (p.creator_user_hash.length > 8 ? p.creator_user_hash.substring(0, 8) + '...' : p.creator_user_hash)
+                        : 'Unknown';
+
+                    return `
+                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-6 hover:border-emerald-500/50 transition group flex flex-col justify-between h-full">
+                        <div>
+                            <h3 class="font-bold text-white text-lg mb-2 line-clamp-2" title="${p.title}">${p.title}</h3>
+                            <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 mb-4">
+                                <span class="bg-slate-800 px-2 py-0.5 rounded text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                    ${creatorDisplay}
                                 </span>
-                            </div>
-                            <h3 class="text-xl font-bold text-white mb-2 group-hover:text-emerald-300 transition">${p.title}</h3>
-                            <p class="text-emerald-200/70 text-sm italic mb-4 font-serif">"${p.catch_copy || p.dev_obsession || 'No catch copy'}"</p>
-                            
-                            <div class="border-t border-slate-700/50 pt-4 flex justify-between items-center">
-                                <span class="text-xs text-slate-500">作成者: ${p.creator_user_hash.substring(0, 8)}...</span>
-                                <span class="text-xs text-slate-500 group-hover:text-emerald-400 transition">ログを見る →</span>
+                                <span>${new Date(p.sealed_at).toLocaleDateString()}</span>
                             </div>
                         </div>
-                    </a>
-                `).join('');
+                        
+                        <div class="flex gap-3 pt-4 border-t border-slate-800 mt-2">
+                             <a href="detail.html?id=${p.id}" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded text-center transition border border-slate-700 flex items-center justify-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                提出データ(詳細)
+                            </a>
+                            ${p.url ? `
+                            <a href="${p.url}" target="_blank" class="px-3 py-2 bg-blue-900/20 hover:bg-blue-900/30 text-blue-400 text-xs rounded border border-blue-500/30 flex items-center gap-1" title="URLを開く">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                URL
+                            </a>` : ''}
+                        </div>
+                    </div>
+                `}).join('');
             } catch (e) { console.error(e); }
         }
 
-        // Expose functions to window
         window.selectDraft = selectDraft; // re-bind
 
         init();
