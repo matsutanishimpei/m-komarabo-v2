@@ -96,7 +96,7 @@
                     <div class="h-full flex flex-col">
                         <label
                             class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">生成されたプロンプトシード</label>
-                        <div class="flex-1 bg-black/30 rounded-xl p-4 border border-slate-700 relative group">
+                        <div class="flex-1 bg-black/30 rounded-xl p-4 border border-slate-700 relative group mb-4">
                             <textarea id="output-seed" readonly
                                 class="w-full h-32 bg-transparent text-slate-300 resize-none outline-none font-mono text-sm leading-relaxed"
                                 placeholder="生成ボタンを押してください..."></textarea>
@@ -109,9 +109,18 @@
                                 </button>
                             </div>
                         </div>
-                        <p class="text-[10px] text-slate-500 mt-2 text-right">
-                            このシードをLLMに入力し、仕様書とコードを生成させてください。
-                        </p>
+
+                        <!-- Create Project Button -->
+                        <div id="action-create-project"
+                            class="opacity-50 pointer-events-none transition-opacity duration-300">
+                            <p class="text-[10px] text-slate-500 mb-2 text-center">
+                                このシードで開発を進めますか？
+                            </p>
+                            <button onclick="createProjectFromSeed()"
+                                class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-900/50 flex justify-center items-center gap-2">
+                                <span>🚀</span> このテーマでプロジェクトを開始する
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -133,10 +142,15 @@
                 <div class="lg:col-span-1 space-y-4">
                     <div class="flex justify-between items-center">
                         <h3 class="font-bold text-slate-300">マイプロジェクト</h3>
-                        <button onclick="registerCurrentSeed()"
-                            class="text-xs bg-blue-600/20 text-blue-400 px-2 py-1 rounded hover:bg-blue-600/30 transition">
-                            + シードを登録
-                        </button>
+                        <a href="#section-ideation" onclick="document.getElementById('input-interest').focus()"
+                            class="text-xs bg-slate-800 text-slate-400 px-3 py-1.5 rounded hover:bg-slate-700 transition flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4">
+                                </path>
+                            </svg>
+                            新規作成 (Ideationへ)
+                        </a>
                     </div>
                     <div id="draft-list" class="space-y-3 min-h-[200px]">
                         <!-- Draft Items -->
@@ -149,7 +163,7 @@
                     class="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-2xl p-8 backdrop-blur-sm relative">
                     <div id="editor-overlay"
                         class="absolute inset-0 bg-slate-950/80 z-10 flex items-center justify-center rounded-2xl">
-                        <p class="text-slate-500">左のリストからプロジェクトを選択してください</p>
+                        <p class="text-slate-500">左のリストからプロジェクトを選択するか、<br>Ideationで新しいテーマを生成してください</p>
                     </div>
 
                     <div class="space-y-6">
@@ -337,6 +351,10 @@
                 .replace(/{{CONSTRAINT}}/g, constraint.content);
 
             document.getElementById('output-seed').value = seedText;
+
+            // Enable the create project button
+            const btnArea = document.getElementById('action-create-project');
+            btnArea.classList.remove('opacity-50', 'pointer-events-none');
         };
 
         window.copySeed = () => {
@@ -346,7 +364,7 @@
         };
 
         // --- Development Logic ---
-        window.registerCurrentSeed = async () => {
+        window.createProjectFromSeed = async () => {
             if (!currentUserHash) { alert('ログインしてください'); return; }
 
             const interest = document.getElementById('input-interest').value.trim();
@@ -366,12 +384,31 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert('ドラフトを登録しました！');
-                    loadDrafts();
+                    // Success!
+                    // 1. Refresh drafts
+                    await loadDrafts();
+
+                    // 2. Find the newly created draft (assuming it's the first one or finding by ID if API returns it)
+                    // The API returns { success: true } typically. We can assume the newest one is at top or valid
+                    // For better UX, we'll try to find the draft that matches the title we just created, or valid ID if available.
+                    // Ideally API should return ID. Assuming data.id or we just pick the latest.
+
+                    // Let's scroll to development section
+                    document.getElementById('section-development').scrollIntoView({ behavior: 'smooth' });
+
+                    // 3. Highlight/Select it (Hack: wait for DOM update and click the first one)
+                    setTimeout(() => {
+                        const firstDraft = document.querySelector('#draft-list > div');
+                        if (firstDraft) firstDraft.click();
+                    }, 500);
+
                 } else {
                     alert('失敗しました: ' + data.message);
                 }
-            } catch (e) { console.error(e); alert('エラーが発生しました'); }
+            } catch (e) {
+                console.error(e);
+                alert('エラーが発生しました');
+            }
         };
 
         async function loadDrafts() {
