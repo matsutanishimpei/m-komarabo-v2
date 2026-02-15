@@ -69,7 +69,7 @@
 
                 <div class="flex items-baseline gap-4 mb-6 border-b border-slate-800 pb-2">
                     <h2
-                        class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                        class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
                         01. Ideation
                     </h2>
                     <p class="text-sm text-slate-400">外部知能との対話の種を生成する</p>
@@ -108,7 +108,7 @@
                         <div class="h-full flex flex-col">
                             <label
                                 class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">生成されたプロンプトシード</label>
-                            <div class="flex-1 bg-black/30 rounded-xl p-4 border border-slate-700 relative group mb-4">
+                            <div class="flex-1 bg-black/30 rounded-xl p-4 border border-slate-700 relative group">
                                 <textarea id="output-seed" readonly
                                     class="w-full h-32 bg-transparent text-slate-300 resize-none outline-none font-mono text-sm leading-relaxed"
                                     placeholder="生成ボタンを押してください..."></textarea>
@@ -121,22 +121,24 @@
                                     </button>
                                 </div>
                             </div>
-
-                            <!-- Create Project Button -->
-                            <div id="action-create-project"
-                                class="opacity-50 pointer-events-none transition-opacity duration-300">
-                                <p class="text-[10px] text-slate-500 mb-2 text-center">
-                                    このシードで開発を進めますか？
-                                </p>
-                                <button onclick="createProjectFromSeed()"
-                                    class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-900/50 flex justify-center items-center gap-2">
-                                    <span>🚀</span> このテーマでプロジェクトを開始する
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </div>
             </section>
+
+            <!-- Create Project Button Area (Between sections) -->
+            <div id="action-create-project"
+                class="flex flex-col items-center justify-center py-4 opacity-50 pointer-events-none transition-opacity duration-300">
+                <div class="h-10 w-0.5 bg-gradient-to-b from-purple-500/50 to-blue-500/50 mb-4"></div>
+                <p class="text-xs text-slate-500 mb-3 text-center">
+                    このシードで開発フェーズへ進む
+                </p>
+                <button onclick="createProjectFromSeed()"
+                    class="px-12 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-full transition shadow-lg shadow-blue-900/50 flex items-center gap-3 transform hover:scale-105">
+                    <span class="text-xl">🚀</span> このテーマでプロジェクトを開始する <span class="text-xl">↓</span>
+                </button>
+                <div class="h-10 w-0.5 bg-gradient-to-b from-blue-500/50 to-blue-500/0 mt-4"></div>
+            </div>
 
             <!-- ②【制作・管理セクション：Development】 -->
             <section id="section-development" class="relative">
@@ -144,7 +146,7 @@
 
                 <div class="flex items-baseline gap-4 mb-6 border-b border-slate-800 pb-2">
                     <h2
-                        class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
+                        class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
                         02. Development
                     </h2>
                     <p class="text-sm text-slate-400">形にする。魂を込める。</p>
