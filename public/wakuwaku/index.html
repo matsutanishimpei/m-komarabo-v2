@@ -267,12 +267,21 @@
         <div id="view-gallery" class="hidden">
             <!-- ③【ナラティブ一覧セクション：Archive】 -->
             <section id="section-archive" class="relative">
-                <div class="flex items-baseline gap-4 mb-6 border-b border-slate-800 pb-2">
+                <div class="flex flex-wrap items-baseline gap-4 mb-6 border-b border-slate-800 pb-2">
                     <h2
                         class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">
                         みんなの広場 (Gallery)
                     </h2>
                     <p class="text-sm text-slate-400">初期衝動のアーカイブ。</p>
+
+                    <!-- User Filter -->
+                    <div class="ml-auto flex items-center gap-2">
+                        <label for="filter-user" class="text-xs text-slate-400">Filter:</label>
+                        <select id="filter-user" onchange="window.filterArchives()"
+                            class="bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded px-2 py-1 outline-none focus:border-emerald-500 transition hover:border-emerald-500/50">
+                            <option value="all">All Users</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div id="archive-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -296,6 +305,7 @@
 
         let currentUserHash = null;
         let currentDraftId = null;
+        let allProducts = [];
 
         // --- Init & Auth ---
         function init() {
@@ -552,47 +562,86 @@
         async function loadArchives() {
             try {
                 const res = await fetch('/api/wakuwaku/products');
-                const products = await res.json();
-                const grid = document.getElementById('archive-grid');
+                allProducts = await res.json();
 
-                if (products.length === 0) {
-                    grid.innerHTML = '<div class="col-span-full text-center py-20 text-slate-600">アーカイブはまだありません</div>';
-                    return;
+                // Populate Filter Dropdown
+                const filterSelect = document.getElementById('filter-user');
+                // Use a Set to get unique user hashes
+                const users = [...new Set(allProducts.map(p => p.creator_user_hash).filter(u => u))];
+
+                // Preserve current selection if possible, otherwise default to all
+                const currentSelection = filterSelect.value || 'all';
+
+                let optionsHtml = '<option value="all">All Users</option>';
+                users.forEach(u => {
+                    const shortHash = u.length > 8 ? u.substring(0, 8) + '...' : u;
+                    const selected = u === currentSelection ? 'selected' : ''; // Wait, value is reset on innerHTML rewrite usually, checking below
+                    optionsHtml += `<option value="${u}">${shortHash}</option>`;
+                });
+                filterSelect.innerHTML = optionsHtml;
+
+                // Restore selection if it still exists in options, otherwise all
+                if (users.includes(currentSelection) || currentSelection === 'all') {
+                    filterSelect.value = currentSelection;
                 }
 
-                grid.innerHTML = products.map(p => {
-                    // Truncate hash for display
-                    const creatorDisplay = p.creator_user_hash
-                        ? (p.creator_user_hash.length > 8 ? p.creator_user_hash.substring(0, 8) + '...' : p.creator_user_hash)
-                        : 'Unknown';
+                filterArchives();
+            } catch (e) { console.error(e); }
+        }
 
-                    return `
-                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-6 hover:border-emerald-500/50 transition group flex flex-col justify-between h-full">
-                        <div>
-                            <h3 class="font-bold text-white text-lg mb-2 line-clamp-2" title="${p.title}">${p.title}</h3>
-                            <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 mb-4">
-                                <span class="bg-slate-800 px-2 py-0.5 rounded text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                                    ${creatorDisplay}
-                                </span>
-                                <span>${new Date(p.sealed_at).toLocaleDateString()}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="flex gap-3 pt-4 border-t border-slate-800 mt-2">
-                             <a href="detail.html?id=${p.id}" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded text-center transition border border-slate-700 flex items-center justify-center gap-1">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                提出データ(詳細)
-                            </a>
-                            ${p.url ? `
-                            <a href="${p.url}" target="_blank" class="px-3 py-2 bg-blue-900/20 hover:bg-blue-900/30 text-blue-400 text-xs rounded border border-blue-500/30 flex items-center gap-1" title="URLを開く">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                                URL
-                            </a>` : ''}
+        window.filterArchives = () => {
+            const filterSelect = document.getElementById('filter-user');
+            // If filterSelect is null (e.g. before DOM load), return
+            if (!filterSelect) return;
+
+            const filterUser = filterSelect.value;
+            let filtered = allProducts;
+            if (filterUser !== 'all') {
+                filtered = allProducts.filter(p => p.creator_user_hash === filterUser);
+            }
+            renderGrid(filtered);
+        };
+
+        function renderGrid(products) {
+            const grid = document.getElementById('archive-grid');
+            if (!grid) return;
+
+            if (products.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center py-20 text-slate-600">表示するアーカイブはありません</div>';
+                return;
+            }
+
+            grid.innerHTML = products.map(p => {
+                const creatorDisplay = p.creator_user_hash
+                    ? (p.creator_user_hash.length > 8 ? p.creator_user_hash.substring(0, 8) + '...' : p.creator_user_hash)
+                    : 'Unknown';
+
+                return `
+                <div class="bg-slate-900 border border-slate-700 rounded-xl p-6 hover:border-emerald-500/50 transition group flex flex-col justify-between h-full">
+                    <div>
+                        <h3 class="font-bold text-white text-lg mb-2 line-clamp-2" title="${p.title}">${p.title}</h3>
+                        <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 mb-4">
+                            <span class="bg-slate-800 px-2 py-0.5 rounded text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                ${creatorDisplay}
+                            </span>
+                            <span>${new Date(p.sealed_at).toLocaleDateString()}</span>
                         </div>
                     </div>
-                `}).join('');
-            } catch (e) { console.error(e); }
+                    
+                    <div class="flex gap-3 pt-4 border-t border-slate-800 mt-2">
+                         <a href="detail.html?id=${p.id}" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded text-center transition border border-slate-700 flex items-center justify-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            提出データ(詳細)
+                        </a>
+                        ${p.url ? `
+                        <a href="${p.url}" target="_blank" class="px-3 py-2 bg-blue-900/20 hover:bg-blue-900/30 text-blue-400 text-xs rounded border border-blue-500/30 flex items-center gap-1" title="URLを開く">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                            URL
+                        </a>` : ''}
+                    </div>
+                </div>
+            `}).join('');
         }
 
         window.selectDraft = selectDraft; // re-bind
