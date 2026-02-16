@@ -1,0 +1,440 @@
+/**
+ * ワクワク試作室 - メインロジック
+ * Ideation / Development / Archive の3つのフェーズを管理
+ */
+import { checkAuth, logout as commonLogout, escapeHtml, isAdmin } from './common.js';
+
+// ========================================
+// State
+// ========================================
+
+let currentUserHash = null;
+let currentDraftId = null;
+let allProducts = [];
+
+// ========================================
+// Init & Auth
+// ========================================
+
+function init() {
+    const auth = checkAuth(false);
+    const statusElement = document.getElementById('loginStatus');
+
+    if (auth) {
+        currentUserHash = auth.userHash;
+        statusElement.innerHTML = `
+            <span class="text-slate-300">User: <strong class="text-white font-mono">${auth.userHash.substring(0, 8)}...</strong></span>
+            <button onclick="window.handleLogout()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition text-slate-300 text-xs font-medium">ログアウト</button>
+        `;
+        loadDrafts();
+    } else {
+        statusElement.innerHTML = `
+            <a href="/login.html#wakuwaku" class="px-3 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-600 transition text-white text-xs font-medium">ログイン</a>
+        `;
+    }
+
+    loadArchives();
+    switchTab('personal');
+}
+
+window.handleLogout = () => commonLogout('/wakuwaku/index.html');
+
+// ========================================
+// Tab Switching
+// ========================================
+
+function switchTab(tab) {
+    const btnPersonal = document.getElementById('btn-personal');
+    const btnGallery = document.getElementById('btn-gallery');
+    const viewPersonal = document.getElementById('view-personal');
+    const viewGallery = document.getElementById('view-gallery');
+
+    if (tab === 'personal') {
+        btnPersonal.classList.add('bg-purple-600', 'text-white', 'shadow-md');
+        btnPersonal.classList.remove('text-slate-400');
+        btnGallery.classList.remove('bg-purple-600', 'bg-emerald-600', 'text-white', 'shadow-md');
+        btnGallery.classList.add('text-slate-400');
+
+        viewPersonal.classList.remove('hidden');
+        viewGallery.classList.add('hidden');
+    } else {
+        btnGallery.classList.add('bg-emerald-600', 'text-white', 'shadow-md');
+        btnGallery.classList.remove('text-slate-400');
+        btnPersonal.classList.remove('bg-purple-600', 'text-white', 'shadow-md');
+        btnPersonal.classList.add('text-slate-400');
+
+        viewGallery.classList.remove('hidden');
+        viewPersonal.classList.add('hidden');
+    }
+}
+window.switchTab = switchTab;
+
+// ========================================
+// Ideation Logic
+// ========================================
+
+window.generateSeed = async () => {
+    const interest = document.getElementById('input-interest').value.trim();
+    if (!interest) {
+        alert('興味・関心を入力してください');
+        return;
+    }
+
+    // 1. Get Random Constraint
+    let constraint = { content: 'なし', category: 'Default' };
+    try {
+        const res = await fetch('/api/wakuwaku/constraints/random');
+        if (res.ok) constraint = await res.json();
+    } catch (e) { console.error(e); }
+
+    document.getElementById('constraint-category').innerText = constraint.category || 'Constraint';
+    document.getElementById('constraint-content').innerText = constraint.content;
+
+    // 2. Get Base Prompt & Combine
+    let basePromptTemplate = '';
+    try {
+        const res = await fetch('/api/wakuwaku/base-prompt');
+        if (res.ok) {
+            const data = await res.json();
+            basePromptTemplate = data.prompt;
+        }
+    } catch (e) { console.error(e); }
+
+    if (!basePromptTemplate || basePromptTemplate === 'プロンプトが設定されていません') {
+        basePromptTemplate = `以下のテーマで、尖ったWebアプリケーションの仕様とプロトタイプコードを考えてください。
+    
+【テーマ】
+{{THEME}}
+
+【絶対的な制約】
+{{CONSTRAINT}}
+
+【出力要件】
+1. アプリのキャッチコピー
+2. 詳細な仕様（プロトコル）
+3. 実装するためのHTML/JSコード（単一ファイルで動作するもの）
+4. 開発者の「変執的なこだわり」ポイント
+`;
+    }
+
+    const seedText = basePromptTemplate
+        .replace(/{{THEME}}/g, interest)
+        .replace(/{{CONSTRAINT}}/g, constraint.content);
+
+    document.getElementById('output-seed').value = seedText;
+
+    const btnArea = document.getElementById('action-create-project');
+    btnArea.classList.remove('opacity-50', 'pointer-events-none');
+};
+
+window.copySeed = () => {
+    const text = document.getElementById('output-seed').value;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => alert('コピーしました！'));
+};
+
+// ========================================
+// Development Logic
+// ========================================
+
+window.createProjectFromSeed = async () => {
+    if (!currentUserHash) { alert('ログインしてください'); return; }
+
+    const interest = document.getElementById('input-interest').value.trim();
+    const constraint = document.getElementById('constraint-content').innerText;
+    if (!interest || constraint === '???') {
+        alert('まずはIdeationでテーマを生成してください');
+        return;
+    }
+
+    const title = `${interest} × ${constraint}`;
+
+    try {
+        const res = await fetch('/api/wakuwaku/drafts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, user_hash: currentUserHash })
+        });
+        const data = await res.json();
+        if (data.success) {
+            await loadDrafts();
+            document.getElementById('section-development').scrollIntoView({ behavior: 'smooth' });
+            setTimeout(() => {
+                const firstDraft = document.querySelector('#draft-list > div');
+                if (firstDraft) firstDraft.click();
+            }, 500);
+        } else {
+            alert('失敗しました: ' + data.message);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('エラーが発生しました');
+    }
+};
+
+// ========================================
+// Drafts
+// ========================================
+
+async function loadDrafts() {
+    if (!currentUserHash) return;
+    try {
+        const res = await fetch(`/api/wakuwaku/drafts?user_hash=${currentUserHash}`);
+        const drafts = await res.json();
+        const container = document.getElementById('draft-list');
+
+        if (drafts.length === 0) {
+            container.innerHTML = '<div class="text-center py-10 text-slate-600 text-sm">進行中のドラフトはありません</div>';
+            return;
+        }
+
+        container.innerHTML = drafts.map(d => {
+            const json = JSON.stringify(d).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+            return `
+            <div onclick='window.selectDraft(${json})' 
+                 class="p-3 bg-slate-900 rounded-xl cursor-pointer hover:bg-slate-800 transition border border-transparent hover:border-slate-700 group flex items-center justify-between">
+                <div class="flex-1 min-w-0 pr-2">
+                   <h4 class="font-bold text-slate-300 text-sm truncate group-hover:text-white">${escapeHtml(d.title)}</h4>
+                   <p class="text-[10px] text-slate-500 mt-1">${new Date(d.created_at).toLocaleDateString()}</p>
+                </div>
+                <button onclick="event.stopPropagation(); window.confirmDeleteDraft(${d.id})" class="p-1.5 rounded-lg hover:bg-slate-700 text-slate-600 hover:text-red-400 transition" title="下書きを削除">
+                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </div>
+        `}).join('');
+    } catch (e) { console.error(e); }
+}
+
+function selectDraft(draft) {
+    currentDraftId = draft.id;
+    document.getElementById('editor-overlay').classList.add('hidden');
+    document.getElementById('edit-title').value = draft.title;
+    document.getElementById('edit-url').value = draft.url || '';
+    document.getElementById('edit-memo').value = draft.dev_obsession || '';
+    document.getElementById('edit-protocol').value = draft.protocol_log || '';
+    document.getElementById('edit-dialogue').value = draft.dialogue_log || '';
+    document.getElementById('edit-catchcopy').value = draft.catch_copy || '';
+}
+window.selectDraft = selectDraft;
+
+function clearEditor() {
+    currentDraftId = null;
+    document.getElementById('editor-overlay').classList.remove('hidden');
+    document.getElementById('edit-title').value = '';
+    document.getElementById('edit-url').value = '';
+    document.getElementById('edit-memo').value = '';
+    document.getElementById('edit-protocol').value = '';
+    document.getElementById('edit-dialogue').value = '';
+    document.getElementById('edit-catchcopy').value = '';
+}
+
+window.saveDraft = async () => {
+    if (!currentDraftId) return;
+
+    const url = document.getElementById('edit-url').value;
+    const memo = document.getElementById('edit-memo').value;
+    const protocol_log = document.getElementById('edit-protocol').value;
+    const dialogue_log = document.getElementById('edit-dialogue').value;
+    const catch_copy = document.getElementById('edit-catchcopy').value;
+
+    try {
+        const res = await fetch('/api/wakuwaku/drafts/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: currentDraftId,
+                user_hash: currentUserHash,
+                url,
+                dev_obsession: memo,
+                protocol_log,
+                dialogue_log,
+                catch_copy
+            })
+        });
+        if (res.ok) {
+            alert('保存しました！');
+            await loadDrafts();
+        }
+    } catch (e) { alert('保存に失敗しました'); }
+};
+
+window.sealProduct = async () => {
+    if (!currentDraftId) return;
+    if (!confirm('本当に封印（提出）しますか？これにより公開され、編集できなくなります。')) return;
+
+    const protocol_log = document.getElementById('edit-protocol').value;
+    const dialogue_log = document.getElementById('edit-dialogue').value;
+    const catch_copy = document.getElementById('edit-catchcopy').value;
+
+    if (!protocol_log || !dialogue_log) {
+        alert('仕様書(Protocol)と対話ログ(Dialogue Log)は必須です');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/wakuwaku/seal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: currentDraftId,
+                user_hash: currentUserHash,
+                protocol_log,
+                dialogue_log,
+                catch_copy
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('封印完了！');
+            clearEditor();
+            loadDrafts();
+            loadArchives();
+
+            if (confirm('封印しました。みんなの広場 (Gallery) で確認しますか？')) {
+                switchTab('gallery');
+            }
+        } else {
+            alert('エラー: ' + data.message);
+        }
+    } catch (e) { alert('封印エラー'); }
+};
+
+window.confirmDeleteDraft = async (id) => {
+    if (!confirm('本当に削除しますか？この操作は取り消せません。')) return;
+    try {
+        const res = await fetch('/api/wakuwaku/delete-product', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, user_hash: currentUserHash })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('削除しました');
+            if (currentDraftId == id) {
+                clearEditor();
+            }
+            loadDrafts();
+        } else {
+            alert('削除失敗: ' + data.message);
+        }
+    } catch (e) { alert('削除エラー'); }
+};
+
+// ========================================
+// Archive (Gallery) Logic
+// ========================================
+
+async function loadArchives() {
+    try {
+        const res = await fetch('/api/wakuwaku/products');
+        allProducts = await res.json();
+
+        // Populate Filter Dropdown
+        const filterSelect = document.getElementById('filter-user');
+        const users = [...new Set(allProducts.map(p => p.creator_user_hash).filter(u => u))];
+        const currentSelection = filterSelect.value || 'all';
+
+        let optionsHtml = '<option value="all">All Users</option>';
+        users.forEach(u => {
+            const shortHash = u.length > 8 ? u.substring(0, 8) + '...' : u;
+            optionsHtml += `<option value="${u}">${shortHash}</option>`;
+        });
+        filterSelect.innerHTML = optionsHtml;
+
+        if (users.includes(currentSelection) || currentSelection === 'all') {
+            filterSelect.value = currentSelection;
+        }
+
+        filterArchives();
+    } catch (e) { console.error(e); }
+}
+
+function filterArchives() {
+    const filterSelect = document.getElementById('filter-user');
+    if (!filterSelect) return;
+
+    const filterUser = filterSelect.value;
+    let filtered = allProducts;
+    if (filterUser !== 'all') {
+        filtered = allProducts.filter(p => p.creator_user_hash === filterUser);
+    }
+    renderGrid(filtered);
+}
+window.filterArchives = filterArchives;
+
+function renderGrid(products) {
+    const grid = document.getElementById('archive-grid');
+    if (!grid) return;
+
+    if (products.length === 0) {
+        grid.innerHTML = '<div class="col-span-full text-center py-20 text-slate-600">表示するアーカイブはありません</div>';
+        return;
+    }
+
+    const adminFlag = isAdmin();
+
+    grid.innerHTML = products.map(p => {
+        const creatorDisplay = p.creator_user_hash
+            ? (p.creator_user_hash.length > 8 ? p.creator_user_hash.substring(0, 8) + '...' : p.creator_user_hash)
+            : 'Unknown';
+
+        return `
+        <div class="bg-slate-900 border border-slate-700 rounded-xl p-6 hover:border-emerald-500/50 transition group flex flex-col justify-between h-full">
+            <div>
+                <h3 class="font-bold text-white text-lg mb-2 line-clamp-2" title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</h3>
+                <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 mb-4">
+                    <span class="bg-slate-800 px-2 py-0.5 rounded text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        ${escapeHtml(creatorDisplay)}
+                    </span>
+                    <span>${new Date(p.sealed_at).toLocaleDateString()}</span>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 pt-4 border-t border-slate-800 mt-2">
+                 <a href="detail.html?id=${p.id}" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded text-center transition border border-slate-700 flex items-center justify-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    提出データ(詳細)
+                </a>
+                ${adminFlag ? `
+                <button onclick="window.unsealProduct(${p.id})" class="px-3 py-2 bg-red-900/20 hover:bg-red-900/40 text-red-500 text-xs rounded border border-red-500/30 flex items-center gap-1" title="下書きに戻す (管理者)">
+                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+                     Unlock
+                </button>` : ''}
+                ${p.url ? `
+                <a href="${escapeHtml(p.url)}" target="_blank" class="px-3 py-2 bg-blue-900/20 hover:bg-blue-900/30 text-blue-400 text-xs rounded border border-blue-500/30 flex items-center gap-1" title="URLを開く">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    URL
+                </a>` : ''}
+            </div>
+        </div>
+    `}).join('');
+}
+
+// ========================================
+// Admin Actions
+// ========================================
+
+window.unsealProduct = async (id) => {
+    if (!confirm('このプロダクトを下書きに戻しますか？（管理者のみ）')) return;
+    try {
+        const res = await fetch('/api/wakuwaku/unseal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, user_hash: currentUserHash })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('下書きに戻しました');
+            loadArchives();
+        } else {
+            alert('エラー: ' + data.message);
+        }
+    } catch (e) { alert('通信エラー'); }
+};
+
+// ========================================
+// Boot
+// ========================================
+
+init();

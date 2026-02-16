@@ -4,6 +4,25 @@
  */
 
 // ========================================
+// セキュリティ
+// ========================================
+
+/**
+ * HTML特殊文字をエスケープ（XSS防止）
+ * @param {string} unsafe - エスケープ対象の文字列
+ * @returns {string} エスケープ済み文字列
+ */
+export function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// ========================================
 // 認証関連
 // ========================================
 
@@ -39,15 +58,24 @@ export function checkAuth(required = true, redirectTheme = 'komarabo') {
 export function logout(redirectUrl = '/index.html') {
     localStorage.removeItem('user_hash');
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('is_admin');
     alert('ログアウトしました');
     location.href = redirectUrl;
 }
 
 /**
- * 管理者権限をチェック
+ * 現在のユーザーが管理者かどうかを返す（localStorage ベース）
+ * @returns {boolean}
+ */
+export function isAdmin() {
+    return localStorage.getItem('is_admin') === '1';
+}
+
+/**
+ * 管理者権限をサーバー側で検証（API呼び出し）
  * @returns {Promise<boolean>}
  */
-export async function checkAdmin() {
+export async function checkAdminServer() {
     const auth = checkAuth(true);
     if (!auth) return false;
 

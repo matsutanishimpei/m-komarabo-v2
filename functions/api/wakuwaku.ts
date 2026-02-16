@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { Bindings } from './types';
+import { getUserByHash, verifyAdmin } from './helpers';
 
 const wakuwaku = new Hono<{ Bindings: Bindings }>();
 
@@ -40,7 +41,7 @@ wakuwaku.post('/drafts', async (c) => {
         const { title, user_hash } = await c.req.json();
         if (!title || !user_hash) return c.json({ success: false, message: 'タイトルとユーザーハッシュは必須です' }, 400);
 
-        const user = await c.env.DB.prepare('SELECT id FROM users WHERE user_hash = ?').bind(user_hash).first<{ id: number }>();
+        const user = await getUserByHash(c, user_hash);
         if (!user) return c.json({ success: false, message: 'ユーザーが見つかりません' }, 404);
 
         const res = await c.env.DB.prepare(
@@ -229,9 +230,7 @@ wakuwaku.post('/unseal', async (c) => {
         const { id, user_hash } = await c.req.json();
 
         // 実行者が管理者か確認
-        const user = await c.env.DB.prepare('SELECT is_admin FROM users WHERE user_hash = ?').bind(user_hash).first<{ is_admin: number }>();
-
-        const isAdmin = (user && user.is_admin === 1) || user_hash === 'admin';
+        const isAdmin = await verifyAdmin(c, user_hash);
 
         if (!isAdmin) {
             return c.json({ success: false, message: '権限がありません(Admin Only)' }, 403);

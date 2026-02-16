@@ -63,24 +63,15 @@
     </main>
 
     <script type="module">
+        import { escapeHtml } from '../js/common.js';
         import { injectWakuwakuBackground } from '../js/theme.js';
         injectWakuwakuBackground();
-    </script>
 
-    <script>
         const urlParams = new URLSearchParams(window.location.search);
         const productId = urlParams.get('id');
         const currentUserHash = localStorage.getItem('user_hash');
 
-        function escapeHtml(unsafe) {
-            if (!unsafe) return '';
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
+
 
         async function loadProduct() {
             if (!productId) {

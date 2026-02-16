@@ -17,7 +17,7 @@ auth.post('/login', async (c) => {
 
     // ユーザーの存在確認
     const existingUser = await c.env.DB.prepare(
-        'SELECT * FROM users WHERE user_hash = ?'
+        'SELECT user_hash, password_hash, is_admin FROM users WHERE user_hash = ?'
     ).bind(user_hash).first<{ user_hash: string, password_hash: string, is_admin: number }>();
 
     if (!existingUser) {
