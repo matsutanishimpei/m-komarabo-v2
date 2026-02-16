@@ -84,18 +84,28 @@ wakuwaku.post('/drafts/save', async (c) => {
             return c.json({ success: false, message: '権限がありません' }, 403);
         }
 
+        const params = [
+            url ?? null,
+            dev_obsession ?? null,
+            protocol_log ?? null,
+            dialogue_log ?? null,
+            catch_copy ?? null,
+            id
+        ];
+        console.log('Update Params:', params);
+
         // 保存時に全フィールド更新
         await c.env.DB.prepare(`
             UPDATE products 
             SET url = ?, dev_obsession = ?, protocol_log = ?, dialogue_log = ?, catch_copy = ?, updated_at = CURRENT_TIMESTAMP 
             WHERE id = ?
-        `).bind(url || null, dev_obsession || null, protocol_log || null, dialogue_log || null, catch_copy || null, id).run();
+        `).bind(...params).run();
 
         return c.json({ success: true });
-    } catch (err) {
-        console.error(err);
-        const msg = err instanceof Error ? err.message : '保存失敗';
-        return c.json({ success: false, message: msg }, 500);
+    } catch (err: any) {
+        console.error('Save error:', err);
+        const msg = err.message || JSON.stringify(err);
+        return c.json({ success: false, message: '保存失敗: ' + msg }, 500);
     }
 });
 
