@@ -12,10 +12,9 @@ admin.post('/check', async (c) => {
     try {
         const { user_hash } = await c.req.json();
         const isAdmin = await verifyAdmin(c, user_hash);
-        console.log('Admin Check:', user_hash, isAdmin);
         return c.json({ is_admin: isAdmin });
     } catch (err) {
-        console.error('Error checking admin:', err);
+        console.error('[admin/check] チェックエラー:', err);
         return c.json({ is_admin: false }, 500);
     }
 });
@@ -41,8 +40,8 @@ admin.post('/stats', async (c) => {
             comments: commentCount?.count || 0
         });
     } catch (err) {
-        console.error('Error fetching stats:', err);
-        return c.json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500);
+        console.error('[admin/stats] 統計取得エラー:', err);
+        return c.json({ error: '統計情報の取得に失敗しました' }, 500);
     }
 });
 
@@ -61,8 +60,8 @@ admin.post('/users', async (c) => {
 
         return c.json({ users: results });
     } catch (err) {
-        console.error('Error fetching users:', err);
-        return c.json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500);
+        console.error('[admin/users] ユーザー一覧取得エラー:', err);
+        return c.json({ error: 'ユーザー一覧の取得に失敗しました' }, 500);
     }
 });
 
@@ -98,8 +97,8 @@ admin.post('/recent-activity', async (c) => {
 
         return c.json({ activities });
     } catch (err) {
-        console.error('Error fetching recent activity:', err);
-        return c.json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500);
+        console.error('[admin/recent-activity] 取得エラー:', err);
+        return c.json({ error: '最近のアクティビティの取得に失敗しました' }, 500);
     }
 });
 
@@ -118,8 +117,8 @@ admin.post('/update-base-prompt', async (c) => {
 
         return c.json({ success: true, message: 'ベースプロンプトを更新しました' });
     } catch (err) {
-        console.error('Error updating base prompt:', err);
-        return c.json({ success: false, message: err instanceof Error ? err.message : 'Unknown error' }, 500);
+        console.error('[admin/update-base-prompt] 更新エラー:', err);
+        return c.json({ success: false, message: 'ベースプロンプトの更新に失敗しました' }, 500);
     }
 });
 
@@ -132,10 +131,11 @@ admin.post('/constraints/list', async (c) => {
         const { user_hash } = await c.req.json();
         if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
 
-        const { results } = await c.env.DB.prepare('SELECT * FROM slot_constraints ORDER BY id DESC').all();
+        const { results } = await c.env.DB.prepare('SELECT id, category, content FROM slot_constraints ORDER BY id DESC').all();
         return c.json(results);
     } catch (err) {
-        return c.json({ error: 'Failed to fetch constraints' }, 500);
+        console.error('[admin/constraints/list] 取得エラー:', err);
+        return c.json({ error: '制約一覧の取得に失敗しました' }, 500);
     }
 });
 
@@ -147,8 +147,8 @@ admin.post('/constraints', async (c) => {
         await c.env.DB.prepare('INSERT INTO slot_constraints (category, content) VALUES (?, ?)').bind(category, content).run();
         return c.json({ success: true });
     } catch (err) {
-        console.error('Error adding constraint:', err);
-        return c.json({ error: err instanceof Error ? err.message : 'Failed to add constraint' }, 500);
+        console.error('[admin/constraints] 追加エラー:', err);
+        return c.json({ error: '制約の追加に失敗しました' }, 500);
     }
 });
 
@@ -160,8 +160,8 @@ admin.post('/constraints/delete', async (c) => {
         await c.env.DB.prepare('DELETE FROM slot_constraints WHERE id = ?').bind(id).run();
         return c.json({ success: true });
     } catch (err) {
-        console.error('Error deleting constraint:', err);
-        return c.json({ error: err instanceof Error ? err.message : 'Failed to delete constraint' }, 500);
+        console.error('[admin/constraints/delete] 削除エラー:', err);
+        return c.json({ error: '制約の削除に失敗しました' }, 500);
     }
 });
 

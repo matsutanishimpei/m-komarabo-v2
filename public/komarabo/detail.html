@@ -131,7 +131,9 @@
         </section>
     </main>
 
-    <script>
+    <script type="module">
+        import { escapeHtml, logout as commonLogout } from '../js/common.js';
+
         const API_BASE = '/api';
         const currentUserHash = localStorage.getItem('user_hash');
         const urlParams = new URLSearchParams(window.location.search);
@@ -201,12 +203,12 @@
                     <div class="flex ${isMine ? 'justify-end' : 'justify-start'}">
                         <div class="max-w-[75%]">
                             <div class="flex items-center gap-2 mb-1 px-1 ${isMine ? 'justify-end' : ''}">
-                                <span class="text-[9px] font-bold text-slate-400">${c.user_hash}</span>
+                                <span class="text-[9px] font-bold text-slate-400">${escapeHtml(c.user_hash)}</span>
                                 <span class="text-[9px] text-slate-300 font-medium">${new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                             <div class="p-4 rounded-2xl text-[13px] shadow-sm ${isMine ? 'bg-slate-900 text-white rounded-tr-none' : 'bg-slate-50 text-slate-700 rounded-tl-none border border-slate-100'
                     }">
-                                ${c.content.replace(/\n/g, '<br>')}
+                                ${escapeHtml(c.content).replace(/\n/g, '<br>')}
                             </div>
                         </div>
                     </div>
@@ -255,7 +257,7 @@
                 const res = await fetch(`${API_BASE}/issues/unassign`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: issueId })
+                    body: JSON.stringify({ id: issueId, user_hash: currentUserHash })
                 });
                 if (res.ok) fetchIssueDetail();
             } catch (err) {
@@ -278,9 +280,15 @@
         }
 
         function logout() {
-            localStorage.clear();
-            window.location.href = '../login.html';
+            commonLogout('/login.html');
         }
+
+        // Expose functions for onclick handlers (required for type="module")
+        window.logout = logout;
+        window.postComment = postComment;
+        window.updateStatus = updateStatus;
+        window.postResolutionReport = postResolutionReport;
+        window.unassignIssue = unassignIssue;
 
         // Enterで送信（Shift+Enterで改行）
         document.getElementById('comment-input').addEventListener('keydown', e => {

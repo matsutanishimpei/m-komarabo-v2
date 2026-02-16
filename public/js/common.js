@@ -56,9 +56,7 @@ export function checkAuth(required = true, redirectTheme = 'komarabo') {
  * @param {string} redirectUrl - ログアウト後のリダイレクト先
  */
 export function logout(redirectUrl = '/index.html') {
-    localStorage.removeItem('user_hash');
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('is_admin');
+    localStorage.clear();
     alert('ログアウトしました');
     location.href = redirectUrl;
 }
@@ -120,11 +118,14 @@ export function displayUserName(elementId = 'display_user_hash') {
 export function showLoading(elementId, message = '読み込み中...') {
     const element = document.getElementById(elementId);
     if (element) {
-        element.innerHTML = `
-            <div class="text-center py-20">
-                <p class="text-gray-400">${message}</p>
-            </div>
-        `;
+        element.textContent = '';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'text-center py-20';
+        const p = document.createElement('p');
+        p.className = 'text-gray-400';
+        p.textContent = message;
+        wrapper.appendChild(p);
+        element.appendChild(wrapper);
     }
 }
 
@@ -136,11 +137,14 @@ export function showLoading(elementId, message = '読み込み中...') {
 export function showError(elementId, message) {
     const element = document.getElementById(elementId);
     if (element) {
-        element.innerHTML = `
-            <div class="text-center py-20">
-                <p class="text-red-400">${message}</p>
-            </div>
-        `;
+        element.textContent = '';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'text-center py-20';
+        const p = document.createElement('p');
+        p.className = 'text-red-400';
+        p.textContent = message;
+        wrapper.appendChild(p);
+        element.appendChild(wrapper);
     }
 }
 

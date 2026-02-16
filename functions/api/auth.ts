@@ -39,14 +39,13 @@ auth.post('/login', async (c) => {
                 auth_token: 'dummy_token_' + Date.now()
             });
         } catch (e) {
-            return c.json({ success: false, message: '登録に失敗しました: ' + (e instanceof Error ? e.message : String(e)) }, 500);
+            console.error('[auth/login] 新規登録エラー:', e);
+            return c.json({ success: false, message: '登録に失敗しました' }, 500);
         }
     }
 
-    // 既存ユーザーの認証
-    // ハッシュ化パスワードの比較（単純文字列比較からハッシュ比較へ移行中）
-    // 既存データがハッシュ化されていない場合の互換性は考慮しない（今回は全データリセット前提）
-    if (existingUser.password_hash === password_hash || existingUser.password_hash === password) {
+    // 既存ユーザーの認証（ハッシュ化パスワードのみ比較）
+    if (existingUser.password_hash === password_hash) {
         return c.json({
             success: true,
             isNew: false,
@@ -61,8 +60,8 @@ auth.post('/login', async (c) => {
 });
 
 auth.onError((err, c) => {
-    console.error('Auth Error:', err);
-    return c.json({ success: false, message: err.message || 'Internal Server Error' }, 500);
+    console.error('[auth] 未処理エラー:', err);
+    return c.json({ success: false, message: 'サーバーエラーが発生しました' }, 500);
 });
 
 export default auth;

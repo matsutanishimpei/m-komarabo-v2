@@ -144,11 +144,15 @@
                 redirectTo = '/komarabo/index.html';
             }
 
-            // URL Parameter Override
+            // URL Parameter Override (同一オリジンのパスのみ許可)
             const urlParams = new URLSearchParams(window.location.search);
             const redirectParam = urlParams.get('redirect_to');
             if (redirectParam) {
-                redirectTo = decodeURIComponent(redirectParam);
+                const decoded = decodeURIComponent(redirectParam);
+                // 同一オリジンの相対パスのみ許可（外部URLやプロトコル相対URLは拒否）
+                if (decoded.startsWith('/') && !decoded.startsWith('//')) {
+                    redirectTo = decoded;
+                }
             }
 
             const t = themes[theme];

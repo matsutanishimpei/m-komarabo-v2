@@ -19,18 +19,18 @@ wakuwaku.get('/base-prompt', async (c) => {
             prompt: config?.value || 'プロンプトが設定されていません'
         });
     } catch (err) {
-        console.error('Error fetching base prompt:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        return c.json({ success: false, message: 'プロンプトの取得に失敗しました: ' + errorMessage }, 500);
+        console.error('[wakuwaku/base-prompt] 取得エラー:', err);
+        return c.json({ success: false, message: 'プロンプトの取得に失敗しました' }, 500);
     }
 });
 
 // ランダムな制約を取得 (Ideation)
 wakuwaku.get('/constraints/random', async (c) => {
     try {
-        const constraint = await c.env.DB.prepare('SELECT * FROM slot_constraints ORDER BY RANDOM() LIMIT 1').first();
+        const constraint = await c.env.DB.prepare('SELECT id, category, content FROM slot_constraints ORDER BY RANDOM() LIMIT 1').first();
         return c.json(constraint || { category: 'Default', content: '制約なし' });
     } catch (err) {
+        console.error('[wakuwaku/constraints/random] 取得エラー:', err);
         return c.json({ category: 'Error', content: '制約取得エラー' });
     }
 });
@@ -50,24 +50,29 @@ wakuwaku.post('/drafts', async (c) => {
 
         return c.json({ success: true, id: res.meta.last_row_id });
     } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Unknown error';
-        return c.json({ success: false, message: msg }, 500);
+        console.error('[wakuwaku/drafts] 作成エラー:', err);
+        return c.json({ success: false, message: 'ドラフトの作成に失敗しました' }, 500);
     }
 });
 
 // マイ・ドラフト一覧取得 (Development - Manage)
 wakuwaku.get('/drafts', async (c) => {
-    const user_hash = c.req.query('user_hash');
-    if (!user_hash) return c.json([]);
+    try {
+        const user_hash = c.req.query('user_hash');
+        if (!user_hash) return c.json([]);
 
-    const { results } = await c.env.DB.prepare(`
-        SELECT products.* 
-        FROM products 
-        JOIN users ON products.creator_id = users.id 
-        WHERE users.user_hash = ? AND products.status = 'draft'
-        ORDER BY products.created_at DESC
-    `).bind(user_hash).all();
-    return c.json(results || []);
+        const { results } = await c.env.DB.prepare(`
+            SELECT products.* 
+            FROM products 
+            JOIN users ON products.creator_id = users.id 
+            WHERE users.user_hash = ? AND products.status = 'draft'
+            ORDER BY products.created_at DESC
+        `).bind(user_hash).all();
+        return c.json(results || []);
+    } catch (err) {
+        console.error('[wakuwaku/drafts] 一覧取得エラー:', err);
+        return c.json([], 500);
+    }
 });
 
 // ドラフト保存 (Development - Save Draft)
@@ -101,7 +106,6 @@ wakuwaku.post('/drafts/save', async (c) => {
             catch_copy ?? null,
             productId
         ];
-        console.log('Update Params:', params);
 
         // 保存時に全フィールド更新
         await c.env.DB.prepare(`
@@ -111,10 +115,9 @@ wakuwaku.post('/drafts/save', async (c) => {
         `).bind(...params).run();
 
         return c.json({ success: true });
-    } catch (err: any) {
-        console.error('Save error:', err);
-        const msg = err.message || JSON.stringify(err);
-        return c.json({ success: false, message: '保存失敗: ' + msg }, 500);
+    } catch (err) {
+        console.error('[wakuwaku/drafts/save] 保存エラー:', err);
+        return c.json({ success: false, message: '保存に失敗しました' }, 500);
     }
 });
 
@@ -149,44 +152,55 @@ wakuwaku.post('/seal', async (c) => {
 
         return c.json({ success: true, message: '封印完了' });
     } catch (err) {
-        return c.json({ success: false, message: '封印失敗: ' + err }, 500);
+        console.error('[wakuwaku/seal] 封印エラー:', err);
+        return c.json({ success: false, message: '封印に失敗しました' }, 500);
     }
 });
 
 
 // プロダクト一覧取得API (Archive)
 wakuwaku.get('/products', async (c) => {
-    const { results } = await c.env.DB.prepare(`
-    SELECT 
-      products.*,
-      users.user_hash as creator_user_hash
-    FROM products
-    JOIN users ON products.creator_id = users.id
-    WHERE products.status = 'published'
-    ORDER BY products.sealed_at DESC
-  `).all(); // Sort by sealed_at as per requirement (chronological order of submission)
+    try {
+        const { results } = await c.env.DB.prepare(`
+            SELECT 
+                products.*,
+                users.user_hash as creator_user_hash
+            FROM products
+            JOIN users ON products.creator_id = users.id
+            WHERE products.status = 'published'
+            ORDER BY products.sealed_at DESC
+        `).all();
 
-    return c.json(results || []);
+        return c.json(results || []);
+    } catch (err) {
+        console.error('[wakuwaku/products] 一覧取得エラー:', err);
+        return c.json([], 500);
+    }
 });
 
 // プロダクト詳細取得API (Archive Detail)
 wakuwaku.get('/product/:id', async (c) => {
-    const id = c.req.param('id');
+    try {
+        const id = c.req.param('id');
 
-    const product = await c.env.DB.prepare(`
-    SELECT 
-      products.*,
-      users.user_hash as creator_user_hash
-    FROM products
-    JOIN users ON products.creator_id = users.id
-    WHERE products.id = ?
-  `).bind(id).first();
+        const product = await c.env.DB.prepare(`
+            SELECT 
+                products.*,
+                users.user_hash as creator_user_hash
+            FROM products
+            JOIN users ON products.creator_id = users.id
+            WHERE products.id = ?
+        `).bind(id).first();
 
-    if (!product) {
-        return c.json({ message: 'プロダクトが見つかりません' }, 404);
+        if (!product) {
+            return c.json({ message: 'プロダクトが見つかりません' }, 404);
+        }
+
+        return c.json(product);
+    } catch (err) {
+        console.error('[wakuwaku/product/:id] 詳細取得エラー:', err);
+        return c.json({ message: 'プロダクトの取得に失敗しました' }, 500);
     }
-
-    return c.json(product);
 });
 
 // プロダクト削除API (Keep for cleanup)
@@ -196,11 +210,11 @@ wakuwaku.post('/delete-product', async (c) => {
 
         // プロダクト存在確認
         const existingProduct = await c.env.DB.prepare(`
-      SELECT products.*, users.user_hash
-      FROM products
-      JOIN users ON products.creator_id = users.id
-      WHERE products.id = ?
-    `).bind(id).first<{ user_hash: string }>();
+            SELECT products.*, users.user_hash
+            FROM products
+            JOIN users ON products.creator_id = users.id
+            WHERE products.id = ?
+        `).bind(id).first<{ user_hash: string }>();
 
         if (!existingProduct) {
             return c.json({ success: false, message: 'プロダクトが見つかりません' }, 404);
@@ -213,14 +227,13 @@ wakuwaku.post('/delete-product', async (c) => {
 
         // 削除実行
         await c.env.DB.prepare(`
-      DELETE FROM products WHERE id = ?
-    `).bind(id).run();
+            DELETE FROM products WHERE id = ?
+        `).bind(id).run();
 
         return c.json({ success: true, message: 'プロダクトを削除しました' });
     } catch (err) {
-        console.error('Error deleting product:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        return c.json({ success: false, message: 'プロダクトの削除に失敗しました: ' + errorMessage }, 500);
+        console.error('[wakuwaku/delete-product] 削除エラー:', err);
+        return c.json({ success: false, message: 'プロダクトの削除に失敗しました' }, 500);
     }
 });
 
@@ -245,8 +258,8 @@ wakuwaku.post('/unseal', async (c) => {
 
         return c.json({ success: true, message: '下書きに戻しました' });
     } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Unknown error';
-        return c.json({ success: false, message: '失敗しました: ' + msg }, 500);
+        console.error('[wakuwaku/unseal] 封印解除エラー:', err);
+        return c.json({ success: false, message: '封印解除に失敗しました' }, 500);
     }
 });
 

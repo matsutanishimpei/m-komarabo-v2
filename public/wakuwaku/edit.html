@@ -45,7 +45,7 @@
         import { injectWakuwakuBackground } from '../js/theme.js';
         injectWakuwakuBackground();
 
-        import { checkAuth, apiRequest, validateRequired, formatDateTime, showError, showLoading } from '../js/common.js';
+        import { checkAuth, apiRequest, validateRequired, formatDateTime, showError, showLoading, escapeHtml } from '../js/common.js';
 
         // 認証チェック
         const auth = checkAuth(true, 'wakuwaku');
@@ -86,7 +86,7 @@
                     <label class="block text-sm font-medium text-slate-300 mb-2">
                         アプリ名<span class="text-red-400">*</span>
                     </label>
-                    <input type="text" id="title" value="${product.title}"
+                    <input type="text" id="title" value="${escapeHtml(product.title)}"
                         class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition">
                 </div>
 
@@ -94,7 +94,7 @@
                     <label class="block text-sm font-medium text-slate-300 mb-2">
                         URL（任意）
                     </label>
-                    <input type="url" id="url" value="${product.url || ''}"
+                    <input type="url" id="url" value="${escapeHtml(product.url || '')}"
                         class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition">
                 </div>
 
@@ -103,7 +103,7 @@
                         こだわりポイント
                     </label>
                     <textarea id="devObsession" rows="8"
-                        class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition">${product.dev_obsession || ''}</textarea>
+                        class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition">${escapeHtml(product.dev_obsession || '')}</textarea>
                 </div>
             </div>
 

@@ -169,7 +169,7 @@
     </script>
     <script type="module">
         import { GoogleGenerativeAI } from "@google/generative-ai";
-        import { checkAuth, logout as commonLogout, displayUserName } from '../js/common.js';
+        import { checkAuth, logout as commonLogout, displayUserName, escapeHtml } from '../js/common.js';
 
         // ログインチェック
         const auth = checkAuth(true, 'komarabo');
@@ -250,7 +250,7 @@
             const renderItem = (i, showDelete = false) => `
                 <div class="bg-white p-5 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition group">
                     <a href="detail.html?id=${i.id}" class="block">
-                        <h5 class="font-bold text-slate-800 group-hover:text-blue-600 transition truncate">${i.title}</h5>
+                        <h5 class="font-bold text-slate-800 group-hover:text-blue-600 transition truncate">${escapeHtml(i.title)}</h5>
                         <p class="text-[10px] text-slate-400 mt-2 uppercase tracking-tighter">${new Date(i.created_at).toLocaleDateString()}</p>
                     </a>
                     ${showDelete ? `
@@ -290,10 +290,10 @@
                             <span class="text-[10px] font-bold ${isMyWork ? 'text-amber-500 bg-amber-50' : 'text-blue-500 bg-blue-50'} px-2 py-1 rounded tracking-widest uppercase">
                                 ${isMyWork ? 'Progress' : 'Open'}
                             </span>
-                            <span class="text-[10px] text-slate-400 font-medium">${i.user_hash}</span>
+                            <span class="text-[10px] text-slate-400 font-medium">${escapeHtml(i.user_hash)}</span>
                         </div>
-                        <h5 class="text-lg font-bold text-slate-800 mb-2 truncate">${i.title}</h5>
-                        <p class="text-sm text-slate-500 line-clamp-2 mb-6 h-10">${i.description}</p>
+                        <h5 class="text-lg font-bold text-slate-800 mb-2 truncate">${escapeHtml(i.title)}</h5>
+                        <p class="text-sm text-slate-500 line-clamp-2 mb-6 h-10">${escapeHtml(i.description)}</p>
                     </div>
                     <div class="flex gap-2">
                         <a href="detail.html?id=${i.id}" class="flex-1 text-center py-2.5 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition">詳細</a>
@@ -334,7 +334,7 @@
                 const res = await fetch('/api/issues/unassign', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id })
+                    body: JSON.stringify({ id, user_hash: currentUserHash })
                 });
                 if (res.ok) {
                     fetchIssues();
