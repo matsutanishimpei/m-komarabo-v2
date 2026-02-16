@@ -193,6 +193,27 @@ admin.post('/update-base-prompt', async (c) => {
 });
 
 // ========================================
+// 要件定義プロンプト更新 API (コマラボ)
+// ========================================
+
+admin.post('/update-requirement-prompt', async (c) => {
+    try {
+        const { prompt, user_hash } = await c.req.json();
+        if (!(await verifyAdmin(c, user_hash))) return c.json({ success: false, message: '管理者権限が必要です' }, 403);
+
+        // UPSERT: キーが存在しない場合は INSERT、存在する場合は UPDATE
+        await c.env.DB.prepare(
+            "INSERT INTO site_configs (key, value, updated_at) VALUES ('komarabo_requirement_prompt', ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP"
+        ).bind(prompt, prompt).run();
+
+        return c.json({ success: true, message: '要件定義プロンプトを更新しました' });
+    } catch (err) {
+        console.error('[admin/update-requirement-prompt] 更新エラー:', err);
+        return c.json({ success: false, message: '要件定義プロンプトの更新に失敗しました' }, 500);
+    }
+});
+
+// ========================================
 // 制約スロット管理 API
 // ========================================
 

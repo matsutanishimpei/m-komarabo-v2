@@ -62,29 +62,44 @@
                     新しい「困りごと」を投稿する
                 </h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="md:col-span-2">
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Gemini API
-                            Key (Optional)</label>
-                        <input type="password" id="gemini_api_key" placeholder="AIコメントを受け取る場合は入力"
-                            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition">
-                    </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Issue
                             Title</label>
                         <input type="text" id="title" placeholder="何にお困りですか？"
                             class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition">
                     </div>
-                    <div class="md:col-span-2">
-                        <label
-                            class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Description</label>
-                        <textarea id="description" rows="3" placeholder="具体的な状況や、どうなってほしいかを教えてください"
-                            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition"></textarea>
+                    <!-- 要件定義プロンプト表示エリア -->
+                    <div class="md:col-span-2" id="promptSection" style="display: none;">
+                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <label
+                                    class="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z">
+                                        </path>
+                                    </svg>
+                                    要件定義プロンプト（AIに貼り付けて使ってね）
+                                </label>
+                                <button onclick="copyRequirementPrompt()"
+                                    class="px-3 py-1 text-xs font-bold text-blue-600 bg-blue-100 hover:bg-blue-200 rounded-lg transition">コピー</button>
+                            </div>
+                            <pre id="requirementPrompt"
+                                class="text-sm text-slate-700 whitespace-pre-wrap font-sans leading-relaxed max-h-48 overflow-y-auto"></pre>
+                        </div>
                     </div>
                 </div>
-                <div class="mt-6 flex justify-end">
-                    <button onclick="postIssue()"
-                        class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-lg shadow-blue-200">投稿する</button>
+                <div class="md:col-span-2">
+                    <label
+                        class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Description</label>
+                    <textarea id="description" rows="3" placeholder="具体的な状況や、どうなってほしいかを教えてください"
+                        class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition"></textarea>
                 </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="postIssue()"
+                    class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-lg shadow-blue-200">投稿する</button>
+            </div>
             </div>
         </section>
 
@@ -160,16 +175,8 @@
         </section>
     </main>
 
-    <script type="importmap">
-        {
-          "imports": {
-            "@google/generative-ai": "https://esm.run/@google/generative-ai"
-          }
-        }
-    </script>
     <script type="module">
-        import { GoogleGenerativeAI } from "@google/generative-ai";
-        import { checkAuth, logout as commonLogout, displayUserName, escapeHtml } from '../js/common.js';
+        import { checkAuth, logout as commonLogout, displayUserName, apiRequest, escapeHtml } from '../js/common.js';
 
         // ログインチェック
         const auth = checkAuth(true, 'komarabo');
@@ -375,7 +382,6 @@
         window.deleteIssue = deleteIssue;
 
         async function postIssue() {
-            const apiKey = document.getElementById('gemini_api_key').value.trim();
             const title = document.getElementById('title').value;
             const description = document.getElementById('description').value;
 
@@ -384,35 +390,19 @@
                 return;
             }
 
-            const payload = { user_hash: currentUserHash, title, description };
+            try {
+                const res = await fetch('/api/issues/post', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_hash: currentUserHash, title, description })
+                });
 
-            const postPromise = fetch('/api/issues/post', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).then(async res => {
                 if (!res.ok) {
                     const error = await res.json();
                     throw new Error(error.message);
                 }
+
                 fetchIssues();
-            });
-
-            if (apiKey) {
-                try {
-                    const genAI = new GoogleGenerativeAI(apiKey);
-                    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }, { apiVersion: "v1beta" });
-                    const prompt = `ユーザーから以下の『困りごと』が投稿されました。これに対して、共感するような短い一言（30文字以内）を返してください。\nタイトル: ${title}\n内容: ${description}`;
-                    model.generateContent(prompt).then(result => {
-                        alert("AIからのコメント: " + result.response.text());
-                    }).catch(err => console.error("Gemini Error:", err));
-                } catch (err) {
-                    console.error("Gemini Setup Error:", err);
-                }
-            }
-
-            try {
-                await postPromise;
                 alert('投稿しました！');
                 document.getElementById('title').value = '';
                 document.getElementById('description').value = '';
@@ -422,6 +412,30 @@
         }
 
         window.postIssue = postIssue;
+
+        // 要件定義プロンプトの読み込み
+        async function loadRequirementPrompt() {
+            try {
+                const data = await apiRequest('/api/issues/requirement-prompt');
+                if (data.prompt && data.prompt.trim()) {
+                    document.getElementById('requirementPrompt').textContent = data.prompt;
+                    document.getElementById('promptSection').style.display = 'block';
+                }
+            } catch (err) {
+                console.error('要件定義プロンプトの取得に失敗:', err);
+            }
+        }
+
+        function copyRequirementPrompt() {
+            const prompt = document.getElementById('requirementPrompt').textContent;
+            navigator.clipboard.writeText(prompt).then(() => {
+                alert('プロンプトをコピーしました！');
+            });
+        }
+        window.copyRequirementPrompt = copyRequirementPrompt;
+
+        // 初期化
+        loadRequirementPrompt();
 
         // デフォルトで相談者モード
         switchMode('requester');

@@ -3,6 +3,20 @@ import { Bindings } from './types';
 
 const issues = new Hono<{ Bindings: Bindings }>();
 
+// 要件定義プロンプトの取得
+issues.get('/requirement-prompt', async (c) => {
+    try {
+        const row = await c.env.DB.prepare(
+            "SELECT value FROM site_configs WHERE key = 'komarabo_requirement_prompt'"
+        ).first<{ value: string }>();
+
+        return c.json({ prompt: row?.value || '' });
+    } catch (err) {
+        console.error('[issues/requirement-prompt] 取得エラー:', err);
+        return c.json({ prompt: '' });
+    }
+});
+
 // 悩み事の一覧取得（フィルター対応）
 // 以前は /list-issues
 issues.get('/list', async (c) => {
