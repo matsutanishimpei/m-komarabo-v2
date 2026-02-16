@@ -217,6 +217,7 @@
                 if (data.success) {
                     localStorage.setItem('user_hash', data.user_hash);
                     localStorage.setItem('role', data.role || 'requester');
+                    localStorage.setItem('is_admin', data.is_admin ? '1' : '0');
                     localStorage.setItem('auth_token', data.auth_token || 'dummy_token');
 
                     // Show simple feedback (using alert for now as per original, but could be toasted)
