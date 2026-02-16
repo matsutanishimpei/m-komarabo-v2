@@ -223,4 +223,29 @@ wakuwaku.post('/delete-product', async (c) => {
     }
 });
 
+// 封印解除 (Admin Only - Unseal)
+wakuwaku.post('/unseal', async (c) => {
+    try {
+        const { id, user_hash } = await c.req.json();
+
+        // 実行者が管理者か確認
+        const user = await c.env.DB.prepare('SELECT role FROM users WHERE user_hash = ?').bind(user_hash).first<{ role: string }>();
+        if (!user || user.role !== 'admin') {
+            return c.json({ success: false, message: '権限がありません(Admin Only)' }, 403);
+        }
+
+        // ステータスをドラフトに戻す
+        await c.env.DB.prepare(`
+            UPDATE products 
+            SET status = 'draft', sealed_at = NULL, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        `).bind(id).run();
+
+        return c.json({ success: true, message: '下書きに戻しました' });
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        return c.json({ success: false, message: '失敗しました: ' + msg }, 500);
+    }
+});
+
 export default wakuwaku;

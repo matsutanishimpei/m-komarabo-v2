@@ -18,7 +18,7 @@ auth.post('/login', async (c) => {
     // ユーザーの存在確認
     const existingUser = await c.env.DB.prepare(
         'SELECT * FROM users WHERE user_hash = ?'
-    ).bind(user_hash).first<{ user_hash: string, password_hash: string }>();
+    ).bind(user_hash).first<{ user_hash: string, password_hash: string, role: string }>();
 
     if (!existingUser) {
         /* 
@@ -35,6 +35,7 @@ auth.post('/login', async (c) => {
                 isNew: true,
                 message: '新規登録・ログインしました',
                 user_hash: user_hash,
+                role: 'requester',
                 auth_token: 'dummy_token_' + Date.now()
             });
         } catch (e) {
@@ -51,6 +52,7 @@ auth.post('/login', async (c) => {
             isNew: false,
             message: 'ログインしました',
             user_hash: existingUser.user_hash,
+            role: existingUser.role,
             auth_token: 'dummy_token_' + Date.now()
         });
     } else {
