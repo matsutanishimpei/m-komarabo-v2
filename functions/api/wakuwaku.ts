@@ -229,8 +229,11 @@ wakuwaku.post('/unseal', async (c) => {
         const { id, user_hash } = await c.req.json();
 
         // 実行者が管理者か確認
-        const user = await c.env.DB.prepare('SELECT role FROM users WHERE user_hash = ?').bind(user_hash).first<{ role: string }>();
-        if (!user || user.role !== 'admin') {
+        const user = await c.env.DB.prepare('SELECT role, is_admin FROM users WHERE user_hash = ?').bind(user_hash).first<{ role: string, is_admin: number }>();
+
+        const isAdmin = user && (user.role === 'admin' || user.is_admin === 1);
+
+        if (!isAdmin) {
             return c.json({ success: false, message: '権限がありません(Admin Only)' }, 403);
         }
 
