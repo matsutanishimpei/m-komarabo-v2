@@ -233,6 +233,39 @@ issues.post('/delete', async (c) => {
     }
 });
 
+// 要件定義（Geminiログ）を更新するAPI
+issues.post('/update-requirement', async (c) => {
+    try {
+        const { id, requirement_log, user_hash } = await c.req.json();
+
+        // 1. ユーザー確認
+        const user = await c.env.DB.prepare('SELECT id FROM users WHERE user_hash = ?').bind(user_hash).first<{ id: number }>();
+        if (!user) return c.json({ success: false, message: 'ユーザーが見つかりません' }, 404);
+
+        // 2. 権限確認（相談者 または 担当開発者）
+        const issue = await c.env.DB.prepare(
+            'SELECT requester_id, developer_id FROM issues WHERE id = ?'
+        ).bind(id).first<{ requester_id: number, developer_id: number | null }>();
+
+        if (!issue) return c.json({ success: false, message: '課題が見つかりません' }, 404);
+
+        const isAuthorized = (issue.requester_id === user.id) || (issue.developer_id === user.id);
+        if (!isAuthorized) {
+            return c.json({ success: false, message: '編集権限がありません' }, 403);
+        }
+
+        // 3. 更新実行
+        await c.env.DB.prepare(
+            'UPDATE issues SET requirement_log = ? WHERE id = ?'
+        ).bind(requirement_log, id).run();
+
+        return c.json({ success: true, message: '要件定義ログを更新しました' });
+    } catch (err) {
+        console.error('[issues/update-requirement] 更新エラー:', err);
+        return c.json({ success: false, message: '更新に失敗しました' }, 500);
+    }
+});
+
 // 悩み事を投稿するAPI
 // 以前は /post-issue
 issues.post('/post', async (c) => {

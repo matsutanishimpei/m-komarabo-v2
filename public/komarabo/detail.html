@@ -174,6 +174,9 @@
             document.getElementById('issue-developer').textContent = issue.developer_user_hash || '未着手';
             document.getElementById('issue-date').textContent = new Date(issue.created_at).toLocaleString();
 
+            // グローバルに保存して編集時に使う
+            window.currentIssueData = issue;
+
             const statusEl = document.getElementById('issue-status');
             statusEl.textContent = issue.status;
             statusEl.className = `text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${issue.status === 'open' ? 'bg-blue-100 text-blue-600' :
@@ -196,6 +199,9 @@
                 `;
             }
 
+            // 要件定義ログの表示 (常に最新を表示)
+            renderRequirementLog(issue.requirement_log, isRequester || isDeveloper);
+
             const timeline = document.getElementById('comment-timeline');
             timeline.innerHTML = comments.map(c => {
                 const isMine = c.user_hash === currentUserHash;
@@ -215,6 +221,101 @@
                 `;
             }).join('') || '<div class="h-full flex items-center justify-center text-slate-300 text-xs italic">やり取りはまだありません</div>';
         }
+
+        function renderRequirementLog(logText, canEdit) {
+            const container = document.getElementById('gemini-logs');
+            const header = document.querySelector('#gemini-logs-header'); // ヘッダー要素を取得するか、IDを付与する
+
+            // ヘッダーにIDがないので動的に探すか、HTML自体を書き換える
+            // ここではセクションごと書き換えではなく、中身を操作する
+
+            const contentHtml = logText
+                ? `<div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm leading-relaxed text-sm text-slate-600 whitespace-pre-wrap">${escapeHtml(logText)}</div>`
+                : `<div class="p-4 bg-white rounded-2xl border border-slate-100 text-xs italic text-slate-400">現在、要件定義ログの履歴はありません。<br>開発者が相談者と対話しながら詳細要件をここにまとめていきます。</div>`;
+
+            // 編集ボタンの制御
+            let editButtonHtml = '';
+            if (canEdit) {
+                editButtonHtml = `<button onclick="editRequirement()" class="ml-auto text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-bold transition">編集する</button>`;
+            }
+
+            // ヘッダー部分にボタンを挿入するために、親要素のHTML構造に依存するよりも、コンテナの上部にボタン用エリアを作るか、既存のDOMを辿る
+            // 最も安全なのは、gemini-logsセクション全体をJSで構築することだが、h3タグなどはHTML側にある
+            // ここでは h3 の隣にボタンを置きたい
+            // 親の section 要素を探す
+            const section = container.parentElement;
+            const h3 = section.querySelector('h3');
+
+            // 既存のボタンがあれば削除しないと重複する
+            const existingBtn = h3.querySelector('button');
+            if (existingBtn) existingBtn.remove();
+
+            if (canEdit) {
+                h3.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="w-1 h-3 bg-blue-400 rounded-full"></span>
+                        Gemini 要件定義ログ
+                    </div>
+                    ${editButtonHtml}
+                 `;
+                h3.className = "text-[10px] uppercase font-black text-slate-400 mb-4 flex items-center justify-between";
+            }
+
+            container.innerHTML = contentHtml;
+        }
+
+        window.editRequirement = function () {
+            const issue = window.currentIssueData;
+            const currentText = issue.requirement_log || '';
+            const container = document.getElementById('gemini-logs');
+
+            container.innerHTML = `
+                <div class="relative">
+                    <textarea id="req-editor" class="w-full p-4 bg-white border border-blue-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-700 leading-relaxed mb-3 font-mono" rows="15" placeholder="ここに要件定義やAIとの対話ログを貼り付けて整理してください...">${currentText}</textarea>
+                    <div class="flex gap-2 justify-end">
+                        <button onclick="cancelEditReq()" class="px-4 py-2 text-slate-500 font-bold text-xs hover:bg-slate-100 rounded-lg transition">キャンセル</button>
+                        <button onclick="saveRequirement()" class="px-6 py-2 bg-blue-600 text-white font-bold text-xs rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-200 transition">保存して更新</button>
+                    </div>
+                </div>
+            `;
+
+            // 編集モード中は編集ボタンを隠す（または無効化）
+            const section = container.parentElement;
+            const btn = section.querySelector('h3 button');
+            if (btn) btn.style.display = 'none';
+        };
+
+        window.cancelEditReq = function () {
+            // 再描画
+            renderRequirementLog(window.currentIssueData.requirement_log, true);
+        };
+
+        window.saveRequirement = async function () {
+            const newText = document.getElementById('req-editor').value;
+            try {
+                const res = await fetch(`${API_BASE}/issues/update-requirement`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: issueId,
+                        requirement_log: newText,
+                        user_hash: currentUserHash
+                    })
+                });
+
+                if (res.ok) {
+                    // 成功したらリロード（データを再取得して表示更新）
+                    await fetchIssueDetail();
+                    alert('要件定義ログを更新しました');
+                } else {
+                    const err = await res.json();
+                    alert('更新エラー: ' + (err.message || '不明なエラー'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('通信エラーが発生しました');
+            }
+        };
 
         async function postComment() {
             const input = document.getElementById('comment-input');
