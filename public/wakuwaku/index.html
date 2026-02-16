@@ -520,7 +520,10 @@
                         catch_copy
                     })
                 });
-                if (res.ok) alert('保存しました！');
+                if (res.ok) {
+                    alert('保存しました！');
+                    await loadDrafts();
+                }
             } catch (e) { alert('保存に失敗しました'); }
         };
 
