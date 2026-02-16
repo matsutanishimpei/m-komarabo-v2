@@ -461,6 +461,16 @@
             }
         };
 
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
         async function loadDrafts() {
             if (!currentUserHash) return;
             try {
@@ -474,11 +484,12 @@
                 }
 
                 container.innerHTML = drafts.map(d => {
+                    // Safe JSON stringify for the onclick handler
                     const json = JSON.stringify(d).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
                     return `
                     <div onclick='window.selectDraft(${json})' 
                          class="p-3 bg-slate-900 rounded-xl cursor-pointer hover:bg-slate-800 transition border border-transparent hover:border-slate-700 group">
-                        <h4 class="font-bold text-slate-300 text-sm truncate group-hover:text-white">${d.title}</h4>
+                        <h4 class="font-bold text-slate-300 text-sm truncate group-hover:text-white">${escapeHtml(d.title)}</h4>
                         <p class="text-[10px] text-slate-500 mt-1">${new Date(d.created_at).toLocaleDateString()}</p>
                     </div>
                 `}).join('');
@@ -632,11 +643,11 @@
                 return `
                 <div class="bg-slate-900 border border-slate-700 rounded-xl p-6 hover:border-emerald-500/50 transition group flex flex-col justify-between h-full">
                     <div>
-                        <h3 class="font-bold text-white text-lg mb-2 line-clamp-2" title="${p.title}">${p.title}</h3>
+                        <h3 class="font-bold text-white text-lg mb-2 line-clamp-2" title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</h3>
                         <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 mb-4">
                             <span class="bg-slate-800 px-2 py-0.5 rounded text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                                ${creatorDisplay}
+                                ${escapeHtml(creatorDisplay)}
                             </span>
                             <span>${new Date(p.sealed_at).toLocaleDateString()}</span>
                         </div>
@@ -648,7 +659,7 @@
                             提出データ(詳細)
                         </a>
                         ${p.url ? `
-                        <a href="${p.url}" target="_blank" class="px-3 py-2 bg-blue-900/20 hover:bg-blue-900/30 text-blue-400 text-xs rounded border border-blue-500/30 flex items-center gap-1" title="URLを開く">
+                        <a href="${escapeHtml(p.url)}" target="_blank" class="px-3 py-2 bg-blue-900/20 hover:bg-blue-900/30 text-blue-400 text-xs rounded border border-blue-500/30 flex items-center gap-1" title="URLを開く">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                             URL
                         </a>` : ''}
