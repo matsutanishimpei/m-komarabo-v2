@@ -498,10 +498,15 @@
 
         window.saveDraft = async () => {
             if (!currentDraftId) return;
+            // Retrieve all necessary values
             const url = document.getElementById('edit-url').value;
             const memo = document.getElementById('edit-memo').value;
+            const protocol_log = document.getElementById('edit-protocol').value;
+            const dialogue_log = document.getElementById('edit-dialogue').value;
+            const catch_copy = document.getElementById('edit-catchcopy').value;
 
             try {
+                // Send all fields to backend
                 const res = await fetch('/api/wakuwaku/drafts/save', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -509,7 +514,10 @@
                         id: currentDraftId,
                         user_hash: currentUserHash,
                         url,
-                        dev_obsession: memo
+                        dev_obsession: memo,
+                        protocol_log,
+                        dialogue_log,
+                        catch_copy
                     })
                 });
                 if (res.ok) alert('保存しました！');
@@ -587,7 +595,7 @@
                     filterSelect.value = currentSelection;
                 }
 
-                filterArchives(); // Render all initially
+                filterArchives();
             } catch (e) { console.error(e); }
         }
 

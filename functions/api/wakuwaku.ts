@@ -69,7 +69,8 @@ wakuwaku.get('/drafts', async (c) => {
 // ドラフト保存 (Development - Save Draft)
 wakuwaku.post('/drafts/save', async (c) => {
     try {
-        const { id, user_hash, url, dev_obsession } = await c.req.json(); // dev_obsession as memo
+        // 受け取りたいフィールドを追加
+        const { id, user_hash, url, dev_obsession, protocol_log, dialogue_log, catch_copy } = await c.req.json();
 
         // ユーザー確認
         const product = await c.env.DB.prepare(`
@@ -83,13 +84,18 @@ wakuwaku.post('/drafts/save', async (c) => {
             return c.json({ success: false, message: '権限がありません' }, 403);
         }
 
+        // 保存時に全フィールド更新
         await c.env.DB.prepare(`
-            UPDATE products SET url = ?, dev_obsession = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-        `).bind(url || null, dev_obsession || null, id).run();
+            UPDATE products 
+            SET url = ?, dev_obsession = ?, protocol_log = ?, dialogue_log = ?, catch_copy = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        `).bind(url || null, dev_obsession || null, protocol_log || null, dialogue_log || null, catch_copy || null, id).run();
 
         return c.json({ success: true });
     } catch (err) {
-        return c.json({ success: false, message: '保存失敗' }, 500);
+        console.error(err);
+        const msg = err instanceof Error ? err.message : '保存失敗';
+        return c.json({ success: false, message: msg }, 500);
     }
 });
 
