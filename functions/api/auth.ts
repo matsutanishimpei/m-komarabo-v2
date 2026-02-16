@@ -17,8 +17,8 @@ auth.post('/login', async (c) => {
 
     // ユーザーの存在確認
     const existingUser = await c.env.DB.prepare(
-        'SELECT user_hash, password_hash, is_admin FROM users WHERE user_hash = ?'
-    ).bind(user_hash).first<{ user_hash: string, password_hash: string, is_admin: number }>();
+        'SELECT user_hash, password_hash, is_admin, COALESCE(is_active, 1) as is_active FROM users WHERE user_hash = ?'
+    ).bind(user_hash).first<{ user_hash: string, password_hash: string, is_admin: number, is_active: number }>();
 
     if (!existingUser) {
         /* 
@@ -42,6 +42,11 @@ auth.post('/login', async (c) => {
             console.error('[auth/login] 新規登録エラー:', e);
             return c.json({ success: false, message: '登録に失敗しました' }, 500);
         }
+    }
+
+    // 無効化されたユーザーのチェック
+    if (!existingUser.is_active) {
+        return c.json({ success: false, message: 'このアカウントは無効化されています' }, 403);
     }
 
     // 既存ユーザーの認証（ハッシュ化パスワードのみ比較）
