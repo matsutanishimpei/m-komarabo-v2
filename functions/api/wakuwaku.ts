@@ -4,7 +4,7 @@ import { Bindings } from './types';
 const wakuwaku = new Hono<{ Bindings: Bindings }>();
 
 // バージョン確認用
-wakuwaku.get('/version', (c) => c.json({ version: '2026-02-16-v3-debug-minimal-2' }));
+wakuwaku.get('/version', (c) => c.json({ version: '2026-02-16-v4-fixed' }));
 
 // ベースプロンプト取得（管理画面から変更可能なあのプロンプト）
 wakuwaku.get('/base-prompt', async (c) => {
@@ -72,10 +72,8 @@ wakuwaku.get('/drafts', async (c) => {
 // ドラフト保存 (Development - Save Draft)
 wakuwaku.post('/drafts/save', async (c) => {
     try {
-        // デバッグ用：最低限のパラメータのみ取得
         const body = await c.req.json();
-        // user_hash, id, url だけ使う
-        const { id, user_hash, url } = body;
+        const { id, user_hash, url, dev_obsession, protocol_log, dialogue_log, catch_copy } = body;
 
         const productId = Number(id);
         if (isNaN(productId)) {
@@ -90,23 +88,28 @@ wakuwaku.post('/drafts/save', async (c) => {
             WHERE products.id = ?
         `).bind(productId).first<{ user_hash: string }>();
 
-        // プロダクトチェック
         if (!product || product.user_hash !== user_hash) {
             return c.json({ success: false, message: '権限がありません' }, 403);
         }
 
-        // DEBUG: 最小限の更新テスト (URLのみ)
-        // ここで失敗するならDB自体の問題、もしくはSQL文法(updated_atなど)
-        const params = [url ?? null, productId];
-        console.log('Update Params (Minimal):', params);
+        const params = [
+            url ?? null,
+            dev_obsession ?? null,
+            protocol_log ?? null,
+            dialogue_log ?? null,
+            catch_copy ?? null,
+            productId
+        ];
+        console.log('Update Params:', params);
 
+        // 保存時に全フィールド更新
         await c.env.DB.prepare(`
             UPDATE products 
-            SET url = ?, updated_at = CURRENT_TIMESTAMP 
+            SET url = ?, dev_obsession = ?, protocol_log = ?, dialogue_log = ?, catch_copy = ?, updated_at = CURRENT_TIMESTAMP 
             WHERE id = ?
         `).bind(...params).run();
 
-        return c.json({ success: true, message: 'DEBUG: URL saved (Minimal)' });
+        return c.json({ success: true });
     } catch (err: any) {
         console.error('Save error:', err);
         const msg = err.message || JSON.stringify(err);
