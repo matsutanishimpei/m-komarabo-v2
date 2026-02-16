@@ -3,6 +3,9 @@ import { Bindings } from './types';
 
 const wakuwaku = new Hono<{ Bindings: Bindings }>();
 
+// バージョン確認用
+wakuwaku.get('/version', (c) => c.json({ version: '2026-02-16-v3-debug' }));
+
 // ベースプロンプト取得（管理画面から変更可能なあのプロンプト）
 wakuwaku.get('/base-prompt', async (c) => {
     try {
