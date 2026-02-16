@@ -18,7 +18,7 @@ auth.post('/login', async (c) => {
     // ユーザーの存在確認
     const existingUser = await c.env.DB.prepare(
         'SELECT * FROM users WHERE user_hash = ?'
-    ).bind(user_hash).first<{ user_hash: string, password_hash: string, role: string, is_admin: number }>();
+    ).bind(user_hash).first<{ user_hash: string, password_hash: string, is_admin: number }>();
 
     if (!existingUser) {
         /* 
@@ -27,15 +27,14 @@ auth.post('/login', async (c) => {
          */
         try {
             await c.env.DB.prepare(
-                'INSERT INTO users (user_hash, password_hash, role, is_admin) VALUES (?, ?, ?, 0)'
-            ).bind(user_hash, password_hash, 'requester').run();
+                'INSERT INTO users (user_hash, password_hash, is_admin) VALUES (?, ?, 0)'
+            ).bind(user_hash, password_hash).run();
 
             return c.json({
                 success: true,
                 isNew: true,
                 message: '新規登録・ログインしました',
                 user_hash: user_hash,
-                role: 'requester',
                 is_admin: 0,
                 auth_token: 'dummy_token_' + Date.now()
             });
@@ -53,7 +52,6 @@ auth.post('/login', async (c) => {
             isNew: false,
             message: 'ログインしました',
             user_hash: existingUser.user_hash,
-            role: existingUser.role,
             is_admin: existingUser.is_admin,
             auth_token: 'dummy_token_' + Date.now()
         });
