@@ -24,6 +24,23 @@ wakuwaku.get('/base-prompt', async (c) => {
     }
 });
 
+// ベースプロンプト一覧取得（複数パターン対応）
+wakuwaku.get('/base-prompts', async (c) => {
+    try {
+        const { results } = await c.env.DB.prepare(
+            'SELECT id, label, prompt FROM base_prompts ORDER BY id ASC'
+        ).all();
+
+        return c.json({
+            success: true,
+            prompts: results || []
+        });
+    } catch (err) {
+        console.error('[wakuwaku/base-prompts] 取得エラー:', err);
+        return c.json({ success: false, message: 'プロンプト一覧の取得に失敗しました' }, 500);
+    }
+});
+
 // ランダムな制約を取得 (Ideation)
 wakuwaku.get('/constraints/random', async (c) => {
     try {

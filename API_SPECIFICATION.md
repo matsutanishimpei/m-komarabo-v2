@@ -346,15 +346,42 @@ APIバージョンを返します（デバッグ用）。
 
 ---
 
+---
+
 ### `GET /api/wakuwaku/base-prompt`
 
-管理者が設定したベースプロンプトを取得します。認証不要。
+(Deprecated) 以前の単一プロンプト取得用API。現在は `GET /api/wakuwaku/base-prompts` の使用を推奨。
 
 **レスポンス:**
 ```json
 {
   "success": true,
   "prompt": "あなたはプロトタイプ開発のメンターです..."
+}
+```
+
+---
+
+### `GET /api/wakuwaku/base-prompts`
+
+登録されているベースプロンプト（傾向）の一覧を取得します。認証不要。
+
+**レスポンス:**
+```json
+{
+  "success": true,
+  "prompts": [
+    {
+      "id": 1,
+      "label": "社会派 (Social)",
+      "prompt": "あなたは社会起業家です..."
+    },
+    {
+      "id": 2,
+      "label": "エンタメ (Entertainment)",
+      "prompt": "あなたはクレイジーなゲーム開発者です..."
+    }
+  ]
 }
 ```
 
@@ -706,9 +733,11 @@ APIバージョンを返します（デバッグ用）。
 
 ---
 
+---
+
 ### `POST /api/admin/update-base-prompt`
 
-ワクワク試作室のベースプロンプトを更新します。🔒 管理者のみ。
+(Deprecated) 単一プロンプト更新用。
 
 **リクエスト:**
 ```json
@@ -723,6 +752,76 @@ APIバージョンを返します（デバッグ用）。
 {
   "success": true,
   "message": "ベースプロンプトを更新しました"
+}
+```
+
+---
+
+### `POST /api/admin/base-prompts/list`
+
+ベースプロンプト一覧を取得します。🔒 管理者のみ。
+
+**リクエスト:**
+```json
+{
+  "user_hash": "string（管理者）"
+}
+```
+
+**レスポンス:**
+```json
+[
+  {
+    "id": 1,
+    "label": "社会派",
+    "prompt": "..."
+  }
+]
+```
+
+---
+
+### `POST /api/admin/base-prompts/save`
+
+ベースプロンプトを保存（作成・更新）します。🔒 管理者のみ。IDを指定すると更新、指定しないと新規作成になります。
+
+**リクエスト:**
+```json
+{
+  "user_hash": "string（管理者）",
+  "id": "number | null（更新時のみ指定）",
+  "label": "string（ラベル名）",
+  "prompt": "string（プロンプト内容）"
+}
+```
+
+**レスポンス:**
+```json
+{
+  "success": true,
+  "message": "ベースプロンプトを保存しました"
+}
+```
+
+---
+
+### `POST /api/admin/base-prompts/delete`
+
+ベースプロンプトを削除します。🔒 管理者のみ。
+
+**リクエスト:**
+```json
+{
+  "user_hash": "string（管理者）",
+  "id": "number（プロンプトID）"
+}
+```
+
+**レスポンス:**
+```json
+{
+  "success": true,
+  "message": "削除しました"
 }
 ```
 

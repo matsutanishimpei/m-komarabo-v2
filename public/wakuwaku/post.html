@@ -72,6 +72,14 @@
                     このプロンプトをコピーしてAIと対話し、あなたにしか作れないアプリを練り上げてください。
                 </p>
 
+                <div class="mb-4">
+                    <label class="block text-xs font-medium text-slate-500 mb-1">人格設定パターンの選択</label>
+                    <select id="basePromptSelect" onchange="updatePromptDisplay()"
+                        class="bg-slate-800 border border-slate-700 text-white text-sm p-2 rounded-lg w-full outline-none focus:border-purple-500 transition">
+                        <option>ロード中...</option>
+                    </select>
+                </div>
+
                 <div class="bg-slate-900 border border-slate-700 rounded-xl p-6 mb-4 relative">
                     <pre id="basePrompt"
                         class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">読み込み中...</pre>
@@ -189,16 +197,43 @@ User: いいね！でもここはもっと..."
         const auth = checkAuth(true, 'wakuwaku');
         const currentUserHash = auth.userHash;
 
+        let basePrompts = [];
+
         // ベースプロンプトを取得
         async function loadBasePrompt() {
             try {
-                const data = await apiRequest('/api/wakuwaku/base-prompt');
-                document.getElementById('basePrompt').textContent = data.prompt;
+                const res = await apiRequest('/api/wakuwaku/base-prompts');
+                if (res.success && res.prompts) {
+                    basePrompts = res.prompts;
+                    const select = document.getElementById('basePromptSelect');
+                    if (basePrompts.length === 0) {
+                        select.innerHTML = '<option value="">(設定なし)</option>';
+                        document.getElementById('basePrompt').textContent = '設定がありません';
+                        return;
+                    }
+
+                    // Populate select
+                    select.innerHTML = basePrompts.map((p, index) =>
+                        `<option value="${index}">${p.label}</option>`
+                    ).join('');
+
+                    // Show first one
+                    updatePromptDisplay();
+                }
             } catch (err) {
                 console.error(err);
                 document.getElementById('basePrompt').textContent = 'プロンプトの読み込みに失敗しました';
             }
         }
+
+        function updatePromptDisplay() {
+            const select = document.getElementById('basePromptSelect');
+            const index = select.value;
+            if (basePrompts[index]) {
+                document.getElementById('basePrompt').textContent = basePrompts[index].prompt;
+            }
+        }
+        window.updatePromptDisplay = updatePromptDisplay;
 
         function copyPrompt() {
             const prompt = document.getElementById('basePrompt').textContent;

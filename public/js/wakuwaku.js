@@ -11,6 +11,7 @@ import { checkAuth, logout as commonLogout, escapeHtml, isAdmin } from './common
 let currentUserHash = null;
 let currentDraftId = null;
 let allProducts = [];
+let basePrompts = [];
 
 // ========================================
 // Init & Auth
@@ -34,6 +35,7 @@ function init() {
     }
 
     loadArchives();
+    loadBasePrompts();
     switchTab('personal');
 }
 
@@ -92,16 +94,24 @@ window.generateSeed = async () => {
 
     // 2. Get Base Prompt & Combine
     let basePromptTemplate = '';
-    try {
-        const res = await fetch('/api/wakuwaku/base-prompt');
-        if (res.ok) {
-            const data = await res.json();
-            basePromptTemplate = data.prompt;
-        }
-    } catch (e) { console.error(e); }
 
-    if (!basePromptTemplate || basePromptTemplate === 'プロンプトが設定されていません') {
-        basePromptTemplate = `以下のテーマで、尖ったWebアプリケーションの仕様とプロトタイプコードを考えてください。
+    // 選択されたBase Promptを取得
+    const tendencySelect = document.getElementById('input-tendency');
+    if (tendencySelect && basePrompts.length > 0) {
+        const selectedId = parseInt(tendencySelect.value);
+        const found = basePrompts.find(p => p.id === selectedId);
+        if (found) {
+            basePromptTemplate = found.prompt;
+        }
+    }
+
+    // もし選択されていない、またはロード前ならAPIから古い方を取得（互換性）またはデフォルト
+    if (!basePromptTemplate) {
+        try {
+            // ... (keep fallback or removal)
+            // But actually we should rely on the list. If list is empty, fetch old one??
+            // For now, let's just use the hardcoded default if nothing found.
+            basePromptTemplate = `以下のテーマで、尖ったWebアプリケーションの仕様とプロトタイプコードを考えてください。
     
 【テーマ】
 {{THEME}}
@@ -115,6 +125,7 @@ window.generateSeed = async () => {
 3. 実装するためのHTML/JSコード（単一ファイルで動作するもの）
 4. 開発者の「変執的なこだわり」ポイント
 `;
+        } catch (e) { console.error(e); }
     }
 
     const seedText = basePromptTemplate
@@ -436,5 +447,25 @@ window.unsealProduct = async (id) => {
 // ========================================
 // Boot
 // ========================================
+
+async function loadBasePrompts() {
+    try {
+        const res = await fetch('/api/wakuwaku/base-prompts');
+        const data = await res.json();
+        if (data.success && data.prompts) {
+            basePrompts = data.prompts;
+            const select = document.getElementById('input-tendency');
+            if (select) {
+                if (basePrompts.length === 0) {
+                    select.innerHTML = '<option value="">(設定なし)</option>';
+                } else {
+                    select.innerHTML = basePrompts.map(p =>
+                        `<option value="${p.id}">${escapeHtml(p.label)}</option>`
+                    ).join('');
+                }
+            }
+        }
+    } catch (e) { console.error('Base prompts load error', e); }
+}
 
 init();

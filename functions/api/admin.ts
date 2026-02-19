@@ -193,6 +193,62 @@ admin.post('/update-base-prompt', async (c) => {
 });
 
 // ========================================
+// ベースプロンプト管理 API (Multiple)
+// ========================================
+
+admin.post('/base-prompts/list', async (c) => {
+    try {
+        const { user_hash } = await c.req.json();
+        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
+
+        const { results } = await c.env.DB.prepare('SELECT id, label, prompt FROM base_prompts ORDER BY id ASC').all();
+        return c.json({ results });
+    } catch (err) {
+        console.error('[admin/base-prompts/list] 取得エラー:', err);
+        return c.json({ error: '一覧の取得に失敗しました' }, 500);
+    }
+});
+
+admin.post('/base-prompts/save', async (c) => {
+    try {
+        const { user_hash, id, label, prompt } = await c.req.json();
+        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
+
+        if (!label || !prompt) {
+            return c.json({ success: false, message: 'ラベルとプロンプトは必須です' }, 400);
+        }
+
+        if (id) {
+            await c.env.DB.prepare(
+                'UPDATE base_prompts SET label = ?, prompt = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+            ).bind(label, prompt, id).run();
+        } else {
+            await c.env.DB.prepare(
+                'INSERT INTO base_prompts (label, prompt) VALUES (?, ?)'
+            ).bind(label, prompt).run();
+        }
+
+        return c.json({ success: true, message: '保存しました' });
+    } catch (err) {
+        console.error('[admin/base-prompts/save] 保存エラー:', err);
+        return c.json({ success: false, message: '保存に失敗しました' }, 500);
+    }
+});
+
+admin.post('/base-prompts/delete', async (c) => {
+    try {
+        const { user_hash, id } = await c.req.json();
+        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
+
+        await c.env.DB.prepare('DELETE FROM base_prompts WHERE id = ?').bind(id).run();
+        return c.json({ success: true, message: '削除しました' });
+    } catch (err) {
+        console.error('[admin/base-prompts/delete] 削除エラー:', err);
+        return c.json({ error: '削除に失敗しました' }, 500);
+    }
+});
+
+// ========================================
 // 要件定義プロンプト更新 API (コマラボ)
 // ========================================
 

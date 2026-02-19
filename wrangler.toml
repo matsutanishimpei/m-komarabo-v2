@@ -1,4 +1,4 @@
-name = "m-komarabo"
+name = "m-komarabo-v2"
 pages_build_output_dir = "public"
 
 [[d1_databases]]
