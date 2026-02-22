@@ -25,6 +25,7 @@ async function init() {
     if (currentUser) {
         statusElement.innerHTML = `
             <span class="text-slate-300">User: <strong class="text-white font-mono">${escapeHtml(currentUser.display_name)}</strong></span>
+            <button onclick="window.location.href='/profile.html'" class="px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30 hover:bg-purple-500/40 transition text-purple-300 text-xs font-medium">プロフィール</button>
             <button onclick="window.handleLogout()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition text-slate-300 text-xs font-medium">ログアウト</button>
         `;
         loadDrafts();
