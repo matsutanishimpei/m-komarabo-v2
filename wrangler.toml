@@ -1,9 +1,6 @@
 name = "m-komarabo-v2"
 pages_build_output_dir = "public"
 
-[build]
-command = "npm install"
-
 [[d1_databases]]
 binding = "DB"
 database_name = "m-komarabo-v2-db"
