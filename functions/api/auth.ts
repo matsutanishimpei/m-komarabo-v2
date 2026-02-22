@@ -205,13 +205,15 @@ auth.get('/me', async (c) => {
 
     // DBから最新情報を取得
     const user = await c.env.DB.prepare(
-        'SELECT id, display_name, role, avatar_url, is_profile_completed FROM users WHERE id = ?'
+        'SELECT id, display_name, email, role, avatar_url, is_profile_completed, created_at FROM users WHERE id = ?'
     ).bind(payload.id).first<{
         id: string;
         display_name: string;
+        email: string;
         role: string;
         avatar_url: string | null;
         is_profile_completed: number;
+        created_at: string;
     }>();
 
     if (!user) {
@@ -224,9 +226,11 @@ auth.get('/me', async (c) => {
         user: {
             id: user.id,
             display_name: user.display_name,
+            email: user.email,
             role: user.role,
             avatar_url: user.avatar_url,
             is_profile_completed: !!user.is_profile_completed,
+            created_at: user.created_at,
         },
     });
 });
