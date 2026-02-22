@@ -6,7 +6,8 @@
     "deploy": "wrangler pages deploy public"
   },
   "dependencies": {
-    "hono": "^4.0.0"
+    "hono": "^4.12.1",
+    "jose": "^6.1.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260210.0",

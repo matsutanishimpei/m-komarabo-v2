@@ -1,6 +1,7 @@
 /**
  * 共通ユーティリティ関数
  * 全てのページで使用する共通機能を提供
+ * Google OAuth + JWT Cookie 認証対応
  */
 
 // ========================================
@@ -23,50 +24,97 @@ export function escapeHtml(unsafe) {
 }
 
 // ========================================
-// 認証関連
+// 認証関連（Cookie JWT ベース）
 // ========================================
 
+// 認証ユーザーのキャッシュ（ページ内で繰り返しAPI呼び出しを避ける）
+let _cachedUser = null;
+let _authChecked = false;
+
 /**
- * ログイン状態をチェック
+ * 認証状態を確認して、ユーザー情報を取得
+ * JWTはHttpOnly Cookieとして自動送信されるので、サーバーに確認する
+ * @returns {Promise<Object|null>} ユーザー情報 or null
+ */
+export async function fetchAuthUser() {
+    if (_authChecked && _cachedUser) return _cachedUser;
+
+    try {
+        const res = await fetch('/api/auth/me', {
+            credentials: 'same-origin'
+        });
+
+        if (!res.ok) {
+            _authChecked = true;
+            _cachedUser = null;
+            return null;
+        }
+
+        const data = await res.json();
+        if (data.authenticated && data.user) {
+            _cachedUser = data.user;
+            _authChecked = true;
+            return data.user;
+        }
+
+        _authChecked = true;
+        _cachedUser = null;
+        return null;
+    } catch (err) {
+        console.error('認証チェックエラー:', err);
+        _authChecked = true;
+        _cachedUser = null;
+        return null;
+    }
+}
+
+/**
+ * ログイン状態をチェック（リダイレクト付き）
  * @param {boolean} required - ログインが必須かどうか
  * @param {string} redirectTheme - リダイレクト先のテーマ ('komarabo' | 'wakuwaku')
- * @returns {Object|null} ユーザー情報 or null
+ * @returns {Promise<Object|null>} ユーザー情報 or null
  */
-export function checkAuth(required = true, redirectTheme = 'komarabo') {
-    const userHash = localStorage.getItem('user_hash');
-    const authToken = localStorage.getItem('auth_token');
+export async function checkAuth(required = true, redirectTheme = 'komarabo') {
+    const user = await fetchAuthUser();
 
-    if (!userHash || !authToken) {
+    if (!user) {
         if (required) {
             const currentPath = encodeURIComponent(location.pathname + location.search);
-            const redirectUrl = redirectTheme === 'wakuwaku'
-                ? `/login.html?redirect_to=${currentPath}#wakuwaku`
-                : `/login.html?redirect_to=${currentPath}#komarabo`;
-            location.href = redirectUrl;
+            const hash = redirectTheme === 'wakuwaku' ? '#wakuwaku' : '#komarabo';
+            location.href = `/login.html?redirect_to=${currentPath}${hash}`;
             throw new Error('Not logged in');
         }
         return null;
     }
 
-    return { userHash, authToken };
+    return user;
 }
 
 /**
  * ログアウト処理
  * @param {string} redirectUrl - ログアウト後のリダイレクト先
  */
-export function logout(redirectUrl = '/index.html') {
-    localStorage.clear();
-    alert('ログアウトしました');
+export async function logout(redirectUrl = '/index.html') {
+    try {
+        await fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'same-origin'
+        });
+    } catch (e) {
+        // ログアウトAPI失敗してもリダイレクトする
+    }
+    _cachedUser = null;
+    _authChecked = false;
     location.href = redirectUrl;
 }
 
 /**
- * 現在のユーザーが管理者かどうかを返す（localStorage ベース）
- * @returns {boolean}
+ * 現在のユーザーが管理者かどうかを返す
+ * @returns {Promise<boolean>}
  */
-export function isAdmin() {
-    return localStorage.getItem('is_admin') === '1';
+export async function isAdmin() {
+    const user = await fetchAuthUser();
+    return !!(user && user.role === 'admin');
 }
 
 /**
@@ -74,16 +122,12 @@ export function isAdmin() {
  * @returns {Promise<boolean>}
  */
 export async function checkAdminServer() {
-    const auth = checkAuth(true);
-    if (!auth) return false;
-
     try {
         const res = await fetch('/api/admin/check', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_hash: auth.userHash })
+            credentials: 'same-origin'
         });
 
+        if (!res.ok) return false;
         const data = await res.json();
         return data.is_admin === true;
     } catch (err) {
@@ -100,13 +144,13 @@ export async function checkAdminServer() {
  * ユーザー名を表示
  * @param {string} elementId - 表示先の要素ID
  */
-export function displayUserName(elementId = 'display_user_hash') {
-    const auth = checkAuth(false);
-    if (!auth) return;
+export async function displayUserName(elementId = 'display_user_name') {
+    const user = await fetchAuthUser();
+    if (!user) return;
 
     const element = document.getElementById(elementId);
     if (element) {
-        element.textContent = auth.userHash;
+        element.textContent = user.display_name;
     }
 }
 
@@ -153,7 +197,7 @@ export function showError(elementId, message) {
 // ========================================
 
 /**
- * APIリクエストのラッパー
+ * APIリクエストのラッパー（Cookie認証対応）
  * @param {string} endpoint - APIエンドポイント
  * @param {Object} options - fetchオプション
  * @returns {Promise<Object>}
@@ -161,6 +205,7 @@ export function showError(elementId, message) {
 export async function apiRequest(endpoint, options = {}) {
     try {
         const res = await fetch(endpoint, {
+            credentials: 'same-origin', // Cookie を自動送信
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers
@@ -171,6 +216,14 @@ export async function apiRequest(endpoint, options = {}) {
         const data = await res.json();
 
         if (!res.ok) {
+            // 認証エラーならログインページにリダイレクト
+            if (res.status === 401) {
+                _cachedUser = null;
+                _authChecked = false;
+                const currentPath = encodeURIComponent(location.pathname + location.search);
+                location.href = `/login.html?redirect_to=${currentPath}`;
+                throw new Error('Authentication required');
+            }
             throw new Error(data.message || data.error || `API Error: ${res.status}`);
         }
 
@@ -183,20 +236,15 @@ export async function apiRequest(endpoint, options = {}) {
 
 /**
  * 管理者専用APIリクエスト
+ * Cookie認証なので user_hash 不要
  * @param {string} endpoint - APIエンドポイント
  * @param {Object} body - リクエストボディ
  * @returns {Promise<Object>}
  */
 export async function adminApiRequest(endpoint, body = {}) {
-    const auth = checkAuth(true);
-    if (!auth) throw new Error('Not authenticated');
-
     return apiRequest(endpoint, {
         method: 'POST',
-        body: JSON.stringify({
-            user_hash: auth.userHash,
-            ...body
-        })
+        body: JSON.stringify(body)
     });
 }
 

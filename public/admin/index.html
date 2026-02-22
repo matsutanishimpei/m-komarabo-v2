@@ -212,17 +212,22 @@
     <script type="module">
         import { checkAuth, adminApiRequest, apiRequest, formatDate, validateRequired, escapeHtml } from '../js/common.js';
 
-        // 認証チェック
-        const auth = checkAuth(true);
-        const currentUserHash = auth.userHash;
+        let currentUser = null;
 
-        // 管理者チェック
+        // 管理者チェック（JWT Cookie認証 + adminGuardミドルウェア）
         async function checkAdminAccess() {
             try {
-                const data = await apiRequest('/api/admin/check', {
-                    method: 'POST',
-                    body: JSON.stringify({ user_hash: currentUserHash })
-                });
+                // checkAuth で認証確認（リダイレクトはしない）
+                currentUser = await checkAuth(false);
+
+                if (!currentUser) {
+                    location.href = '../login.html';
+                    return false;
+                }
+
+                // /api/admin/check で管理者権限を確認
+                // （adminGuardミドルウェアで保護されているため、403の場合は管理者でない）
+                const data = await apiRequest('/api/admin/check');
 
                 if (!data.is_admin) {
                     location.href = '../index.html';
@@ -232,7 +237,7 @@
                 // 管理者確認OK → ページ表示
                 document.getElementById('authLoading').style.display = 'none';
                 document.getElementById('adminContent').style.display = 'block';
-                document.getElementById('adminName').textContent = `管理者: ${currentUserHash}`;
+                document.getElementById('adminName').textContent = `管理者: ${currentUser.display_name}`;
                 return true;
             } catch (err) {
                 console.error(err);
@@ -389,7 +394,7 @@
                 if (data.users) {
                     const userList = document.getElementById('userList');
                     userList.innerHTML = data.users.map(user => {
-                        const isSelf = user.user_hash === currentUserHash;
+                        const isSelf = user.id === currentUser.id;
                         const isActive = user.is_active !== 0;
                         const rowOpacity = isActive ? '' : 'opacity-50';
                         const nameStyle = isActive ? '' : 'line-through';
@@ -397,27 +402,31 @@
                             ? '<span class="w-2.5 h-2.5 rounded-full bg-green-400 flex-shrink-0"></span>'
                             : '<span class="w-2.5 h-2.5 rounded-full bg-red-400 flex-shrink-0"></span>';
 
-                        const adminBtnClass = user.is_admin
+                        const displayName = user.display_name || user.email || user.id;
+                        const initials = displayName.substring(0, 2).toUpperCase();
+
+                        const isAdmin = user.role === 'admin';
+                        const adminBtnClass = isAdmin
                             ? 'bg-red-100 text-red-600 hover:bg-red-200'
                             : 'bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600';
-                        const adminBtnText = user.is_admin ? '管理者 ✓' : '一般';
-                        const adminBtnDisabled = isSelf ? 'disabled class="px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-600 cursor-not-allowed opacity-60"' : `onclick="toggleAdmin('${escapeHtml(user.user_hash)}')" class="px-2 py-1 text-xs font-medium rounded cursor-pointer transition ${adminBtnClass}"`;
+                        const adminBtnText = isAdmin ? '管理者 ✓' : '一般';
+                        const adminBtnDisabled = isSelf ? `disabled class="px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-600 cursor-not-allowed opacity-60"` : `onclick="toggleAdmin('${escapeHtml(user.id)}')" class="px-2 py-1 text-xs font-medium rounded cursor-pointer transition ${adminBtnClass}"`;
 
                         const activeBtnClass = isActive
                             ? 'bg-green-100 text-green-700 hover:bg-red-100 hover:text-red-600'
                             : 'bg-red-100 text-red-600 hover:bg-green-100 hover:text-green-700';
                         const activeBtnText = isActive ? '有効' : '無効';
-                        const activeBtnDisabled = isSelf ? 'disabled class="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-700 cursor-not-allowed opacity-60"' : `onclick="toggleActive('${escapeHtml(user.user_hash)}')" class="px-2 py-1 text-xs font-medium rounded cursor-pointer transition ${activeBtnClass}"`;
+                        const activeBtnDisabled = isSelf ? `disabled class="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-700 cursor-not-allowed opacity-60"` : `onclick="toggleActive('${escapeHtml(user.id)}')" class="px-2 py-1 text-xs font-medium rounded cursor-pointer transition ${activeBtnClass}"`;
 
                         return `
                             <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg ${rowOpacity}">
                                 <div class="flex items-center gap-3">
                                     ${statusDot}
                                     <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold text-sm">
-                                        ${escapeHtml(user.user_hash.substring(0, 2).toUpperCase())}
+                                        ${escapeHtml(initials)}
                                     </div>
                                     <div>
-                                        <p class="font-medium text-gray-900 ${nameStyle}">${escapeHtml(user.user_hash)}${isSelf ? ' <span class="text-xs text-blue-500">(自分)</span>' : ''}</p>
+                                        <p class="font-medium text-gray-900 ${nameStyle}">${escapeHtml(displayName)}${isSelf ? ' <span class="text-xs text-blue-500">(自分)</span>' : ''}</p>
                                         <p class="text-xs text-gray-500">登録: ${formatDate(user.created_at)}</p>
                                     </div>
                                 </div>
@@ -435,13 +444,13 @@
         }
 
         // 管理者権限の切り替え
-        async function toggleAdmin(targetUserHash) {
+        async function toggleAdmin(targetUserId) {
             const action = confirm('このユーザーの管理者権限を切り替えますか？');
             if (!action) return;
 
             try {
-                const data = await adminApiRequest('/api/admin/users/toggle-admin', {
-                    target_user_hash: targetUserHash
+                const data = await adminApiRequest('/api/admin/users/toggle-role', {
+                    target_user_id: targetUserId
                 });
                 if (data.success) {
                     alert(data.message);
@@ -457,13 +466,13 @@
         window.toggleAdmin = toggleAdmin;
 
         // ユーザー有効/無効の切り替え
-        async function toggleActive(targetUserHash) {
+        async function toggleActive(targetUserId) {
             const action = confirm('このユーザーの有効/無効を切り替えますか？\n無効化されたユーザーはログインできなくなります。');
             if (!action) return;
 
             try {
                 const data = await adminApiRequest('/api/admin/users/toggle-active', {
-                    target_user_hash: targetUserHash
+                    target_user_id: targetUserId
                 });
                 if (data.success) {
                     alert(data.message);
@@ -490,7 +499,7 @@
                             <div class="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
                             <div class="flex-1">
                                 <p class="text-sm text-gray-900">${escapeHtml(activity.title)}</p>
-                                <p class="text-xs text-gray-500">${escapeHtml(activity.type)} by ${escapeHtml(activity.user_hash)} - ${formatDate(activity.created_at)}</p>
+                                <p class="text-xs text-gray-500">${escapeHtml(activity.type)} by ${escapeHtml(activity.display_name || activity.user_name || '')} - ${formatDate(activity.created_at)}</p>
                             </div>
                         </div>
                     `).join('');
@@ -518,7 +527,7 @@
                 console.error('Failed to load constraints:', e);
             }
         }
-        window.loadConstraints = loadConstraints; // Ensure global access if needed
+        window.loadConstraints = loadConstraints;
 
         // 制約を追加
         async function addConstraint() {
@@ -527,7 +536,6 @@
             if (!content) return;
 
             try {
-                // adminApiRequest adds user_hash automatically
                 const res = await adminApiRequest('/api/admin/constraints', {
                     category, content
                 });

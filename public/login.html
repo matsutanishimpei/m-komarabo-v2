@@ -20,66 +20,84 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
+
+        .google-btn {
+            background: #fff;
+            border: 2px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+
+        .google-btn:hover {
+            border-color: #4285F4;
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .google-btn:active {
+            transform: translateY(0);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .error-banner {
+            animation: fadeIn 0.3s ease forwards;
+        }
     </style>
 </head>
 
 <body class="min-h-screen flex items-center justify-center p-4 transition-colors duration-300" id="body">
 
-    <div id="card" class="w-full max-w-md p-8 rounded-2xl shadow-xl transition-all duration-300 transform">
+    <div id="card" class="w-full max-w-md p-8 rounded-2xl shadow-xl transition-all duration-300 transform fade-in">
+        <!-- Error Banner -->
+        <div id="errorBanner"
+            class="hidden mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm error-banner">
+            <span id="errorMessage"></span>
+        </div>
+
         <!-- Header -->
         <div class="text-center mb-8">
             <h1 id="pageTitle" class="text-2xl font-bold mb-2 transition-colors duration-300">ログイン</h1>
-            <p id="subTitle" class="text-sm transition-colors duration-300 opacity-70">アカウントにアクセスする</p>
+            <p id="subTitle" class="text-sm transition-colors duration-300 opacity-70">Googleアカウントでログイン</p>
         </div>
 
-        <!-- Login Form -->
-        <div id="loginForm" class="space-y-4">
-            <div>
-                <label for="loginUserHash"
-                    class="block text-xs font-bold uppercase tracking-widest mb-1 opacity-60">Nick Name</label>
-                <input type="text" id="loginUserHash" placeholder="ニックネーム"
-                    class="w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition duration-200">
-            </div>
-            <div>
-                <label for="loginPassword"
-                    class="block text-xs font-bold uppercase tracking-widest mb-1 opacity-60">Password</label>
-                <input type="password" id="loginPassword" placeholder="パスワード"
-                    class="w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition duration-200">
-            </div>
-            <button onclick="login()" id="loginBtn"
-                class="w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition duration-200 transform hover:-translate-y-0.5 mt-2">
-                ログイン
+        <!-- Google OAuth Login Button -->
+        <div class="space-y-4">
+            <button onclick="loginWithGoogle()" id="googleLoginBtn"
+                class="google-btn w-full py-3.5 rounded-xl font-bold flex items-center justify-center gap-3 text-gray-700">
+                <!-- Google Icon SVG -->
+                <svg width="20" height="20" viewBox="0 0 48 48">
+                    <path fill="#EA4335"
+                        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                    <path fill="#4285F4"
+                        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                    <path fill="#FBBC05"
+                        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                    <path fill="#34A853"
+                        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                    <path fill="none" d="M0 0h48v48H0z" />
+                </svg>
+                <span>Googleでログイン</span>
             </button>
         </div>
 
-        <!-- Register Form -->
-        <div id="registerForm" class="space-y-4 hidden">
-            <div>
-                <label for="registerUserHash"
-                    class="block text-xs font-bold uppercase tracking-widest mb-1 opacity-60">Nick Name</label>
-                <input type="text" id="registerUserHash" placeholder="ニックネーム（公開されます）"
-                    class="w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition duration-200">
-                <p class="text-[10px] mt-1 opacity-50">※他のユーザーにも表示される名前です</p>
-            </div>
-            <div>
-                <label for="registerPassword"
-                    class="block text-xs font-bold uppercase tracking-widest mb-1 opacity-60">Password</label>
-                <input type="password" id="registerPassword" placeholder="パスワード"
-                    class="w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition duration-200">
-            </div>
-            <button onclick="register()" id="registerBtn"
-                class="w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition duration-200 transform hover:-translate-y-0.5 mt-2">
-                新規登録
-            </button>
-        </div>
-
-        <!-- Toggle -->
-        <div class="mt-8 text-center text-sm">
-            <span id="toggleText" class="opacity-70">アカウントをお持ちでない方は</span>
-            <button id="toggleButton" onclick="toggleForm()"
-                class="font-bold underline ml-1 hover:opacity-80 transition">
-                新規登録
-            </button>
+        <!-- Info -->
+        <div class="mt-6 text-center">
+            <p class="text-xs opacity-50">Googleアカウントで安全にログインできます</p>
+            <p class="text-xs opacity-40 mt-1">初回ログイン時に自動でアカウントが作成されます</p>
         </div>
 
         <!-- Back Link -->
@@ -89,47 +107,36 @@
     </div>
 
     <script>
-        let isLoginMode = true;
-        let theme = 'komarabo'; // 'komarabo' (light) or 'wakuwaku' (dark)
+        let theme = 'komarabo';
         let redirectTo = '/komarabo/index.html';
 
         // Elements
         const body = document.getElementById('body');
         const card = document.getElementById('card');
-        const inputs = document.querySelectorAll('input');
-        const loginBtn = document.getElementById('loginBtn');
-        const registerBtn = document.getElementById('registerBtn');
         const pageTitle = document.getElementById('pageTitle');
         const subTitle = document.getElementById('subTitle');
-        const toggleButton = document.getElementById('toggleButton');
 
         // Theme Definitions
         const themes = {
             komarabo: {
                 body: ['bg-cream', 'text-slate-800'],
                 card: ['bg-white', 'border', 'border-slate-100', 'shadow-slate-200'],
-                input: ['bg-white', 'border-slate-200', 'text-slate-800', 'focus:ring-blue-500', 'focus:border-blue-500', 'placeholder-slate-400'],
-                btn: ['bg-blue-600', 'hover:bg-blue-700', 'shadow-blue-200'],
-                text: ['text-blue-600'], // for toggle button
                 title: '困りごとラボ',
-                subtitle: '街の課題を解決するプラットフォーム',
+                subtitle: 'Googleアカウントでログイン',
                 redirect: '/komarabo/index.html'
             },
             wakuwaku: {
                 body: ['bg-slate-900', 'text-slate-100'],
                 card: ['bg-slate-800', 'border', 'border-slate-700', 'shadow-slate-900'],
-                input: ['bg-slate-900', 'border-slate-600', 'text-slate-100', 'focus:ring-purple-500', 'focus:border-purple-500', 'placeholder-slate-500'],
-                btn: ['bg-purple-600', 'hover:bg-purple-700', 'shadow-purple-900/50'],
-                text: ['text-purple-400'], // for toggle button
                 title: 'ワクワク試作室',
-                subtitle: '技術とアイデアの実験場',
-                redirect: '/wakuwaku/index.html' // Note: wakuwaku usually redirects to post page in logic, but default base is here
+                subtitle: 'Googleアカウントでログイン',
+                redirect: '/wakuwaku/index.html'
             }
         };
 
         function getHash() {
             const hash = window.location.hash.substring(1);
-            return hash || 'komarabo'; // Default to komarabo if empty
+            return hash || 'komarabo';
         }
 
         // Initialize Theme based on URL Hash
@@ -149,7 +156,6 @@
             const redirectParam = urlParams.get('redirect_to');
             if (redirectParam) {
                 const decoded = decodeURIComponent(redirectParam);
-                // 同一オリジンの相対パスのみ許可（外部URLやプロトコル相対URLは拒否）
                 if (decoded.startsWith('/') && !decoded.startsWith('//')) {
                     redirectTo = decoded;
                 }
@@ -159,104 +165,69 @@
 
             // Reset classes
             body.className = "min-h-screen flex items-center justify-center p-4 transition-colors duration-300";
-            card.className = "w-full max-w-md p-8 rounded-2xl shadow-xl transition-all duration-300 transform";
+            card.className = "w-full max-w-md p-8 rounded-2xl shadow-xl transition-all duration-300 transform fade-in";
 
             // Apply new classes
             body.classList.add(...t.body);
             card.classList.add(...t.card);
-
-            inputs.forEach(input => {
-                input.className = "w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition duration-200";
-                input.classList.add(...t.input);
-            });
-
-            [loginBtn, registerBtn].forEach(btn => {
-
-                // Remove previous specific color classes carefully or just resetbase
-                // Simplified: Re-assign base and add specific
-                btn.className = "w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition duration-200 transform hover:-translate-y-0.5 mt-2";
-                btn.classList.add(...t.btn);
-            });
-
-            toggleButton.className = "font-bold underline ml-1 hover:opacity-80 transition";
-            toggleButton.classList.add(...t.text);
 
             // Text Content
             pageTitle.textContent = t.title;
             subTitle.textContent = t.subtitle;
         }
 
-        function toggleForm() {
-            isLoginMode = !isLoginMode;
-            const loginForm = document.getElementById('loginForm');
-            const registerForm = document.getElementById('registerForm');
-            const toggleText = document.getElementById('toggleText');
-            const toggleButton = document.getElementById('toggleButton');
+        // Google OAuth ログイン
+        function loginWithGoogle() {
+            const authUrl = `/api/auth/google?redirect_to=${encodeURIComponent(redirectTo)}`;
+            window.location.href = authUrl;
+        }
 
-            if (isLoginMode) {
-                loginForm.classList.remove('hidden');
-                registerForm.classList.add('hidden');
-                toggleText.textContent = 'アカウントをお持ちでない方は';
-                toggleButton.textContent = '新規登録';
-                loginBtn.textContent = 'ログイン'; // Ensure button text is correct
-            } else {
-                loginForm.classList.add('hidden');
-                registerForm.classList.remove('hidden');
-                toggleText.textContent = 'すでにアカウントをお持ちの方は';
-                toggleButton.textContent = 'ログイン';
-                registerBtn.textContent = '新規登録';
+        // エラーメッセージ表示
+        function showError(message) {
+            const banner = document.getElementById('errorBanner');
+            const msgEl = document.getElementById('errorMessage');
+            msgEl.textContent = message;
+            banner.classList.remove('hidden');
+        }
+
+        // URLパラメータでエラーチェック
+        function checkForErrors() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
+            if (error) {
+                const errorMessages = {
+                    'oauth_denied': 'Google認証がキャンセルされました',
+                    'no_code': '認証コードの取得に失敗しました',
+                    'token_exchange_failed': 'トークンの交換に失敗しました',
+                    'userinfo_failed': 'ユーザー情報の取得に失敗しました',
+                    'internal': 'サーバーエラーが発生しました。もう一度お試しください',
+                };
+                showError(errorMessages[error] || 'ログインに失敗しました');
             }
         }
 
-        async function handleAuth(endpoint, payload) {
+        // 既にログイン済みの場合はリダイレクト
+        async function checkExistingAuth() {
             try {
-                const res = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await res.json();
-
-                if (data.success) {
-                    localStorage.setItem('user_hash', data.user_hash);
-                    localStorage.setItem('role', data.role || 'requester');
-                    localStorage.setItem('is_admin', data.is_admin ? '1' : '0');
-                    localStorage.setItem('auth_token', data.auth_token || 'dummy_token');
-
-                    // Show simple feedback (using alert for now as per original, but could be toasted)
-                    // alert(data.message); 
-
-                    location.href = redirectTo;
-                } else {
-                    alert(data.message || '認証に失敗しました');
+                const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.authenticated) {
+                        location.href = redirectTo;
+                    }
                 }
-            } catch (err) {
-                console.error(err);
-                alert('エラーが発生しました');
+            } catch (e) {
+                // 無視
             }
         }
 
-        function login() {
-            const user_hash = document.getElementById('loginUserHash').value;
-            const password = document.getElementById('loginPassword').value;
-            handleAuth('/api/auth/login', { user_hash, password });
-        }
-
-        function register() {
-            const user_hash = document.getElementById('registerUserHash').value;
-            const password = document.getElementById('registerPassword').value;
-            handleAuth('/api/auth/login', { user_hash, password }); // Assuming same endpoint handles registration if new user? 
-            // Original code used same endpoint. Usually registration might be separate or flag based, 
-            // but checking original implementation: logic seems to be "get or create" or handled by backend.
-            // Keeping as is.
-        }
-
-        // Event Listeners for Hash Change (to support back button or manual URL change without reload)
+        // Event Listeners
         window.addEventListener('hashchange', applyTheme);
 
         // Initial Load
         applyTheme();
+        checkForErrors();
+        checkExistingAuth();
     </script>
 </body>
 

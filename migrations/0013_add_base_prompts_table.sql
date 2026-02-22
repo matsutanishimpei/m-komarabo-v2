@@ -9,13 +9,14 @@ CREATE TABLE IF NOT EXISTS base_prompts (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. Migrate existing base prompt from site_configs
+-- 2. Migrate existing base prompt from site_configs (skip if already migrated)
 INSERT INTO base_prompts (label, prompt)
 SELECT '標準 (Standard)', value 
 FROM site_configs 
-WHERE key = 'wakuwaku_base_prompt';
+WHERE key = 'wakuwaku_base_prompt'
+AND NOT EXISTS (SELECT 1 FROM base_prompts WHERE label = '標準 (Standard)');
 
--- If no existing prompt, insert a default one
+-- If no existing prompt at all, insert a default one
 INSERT INTO base_prompts (label, prompt)
 SELECT '標準 (Standard)', 'あなたはマッドサイエンティストです。ユーザーのアイデアを極限まで尖らせてください。'
 WHERE NOT EXISTS (SELECT 1 FROM base_prompts);

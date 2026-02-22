@@ -1,14 +1,15 @@
 /**
  * ワクワク試作室 - メインロジック
  * Ideation / Development / Archive の3つのフェーズを管理
+ * Google OAuth + JWT Cookie 認証対応
  */
-import { checkAuth, logout as commonLogout, escapeHtml, isAdmin } from './common.js';
+import { checkAuth, logout as commonLogout, escapeHtml, fetchAuthUser, apiRequest } from './common.js';
 
 // ========================================
 // State
 // ========================================
 
-let currentUserHash = null;
+let currentUser = null;
 let currentDraftId = null;
 let allProducts = [];
 let basePrompts = [];
@@ -17,14 +18,13 @@ let basePrompts = [];
 // Init & Auth
 // ========================================
 
-function init() {
-    const auth = checkAuth(false);
+async function init() {
+    currentUser = await checkAuth(false, 'wakuwaku');
     const statusElement = document.getElementById('loginStatus');
 
-    if (auth) {
-        currentUserHash = auth.userHash;
+    if (currentUser) {
         statusElement.innerHTML = `
-            <span class="text-slate-300">User: <strong class="text-white font-mono">${auth.userHash.substring(0, 8)}...</strong></span>
+            <span class="text-slate-300">User: <strong class="text-white font-mono">${escapeHtml(currentUser.display_name)}</strong></span>
             <button onclick="window.handleLogout()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition text-slate-300 text-xs font-medium">ログアウト</button>
         `;
         loadDrafts();
@@ -85,7 +85,7 @@ window.generateSeed = async () => {
     // 1. Get Random Constraint
     let constraint = { content: 'なし', category: 'Default' };
     try {
-        const res = await fetch('/api/wakuwaku/constraints/random');
+        const res = await fetch('/api/wakuwaku/constraints/random', { credentials: 'same-origin' });
         if (res.ok) constraint = await res.json();
     } catch (e) { console.error(e); }
 
@@ -105,12 +105,9 @@ window.generateSeed = async () => {
         }
     }
 
-    // もし選択されていない、またはロード前ならAPIから古い方を取得（互換性）またはデフォルト
+    // もし選択されていない、またはロード前ならデフォルトを使う
     if (!basePromptTemplate) {
         try {
-            // ... (keep fallback or removal)
-            // But actually we should rely on the list. If list is empty, fetch old one??
-            // For now, let's just use the hardcoded default if nothing found.
             basePromptTemplate = `以下のテーマで、尖ったWebアプリケーションの仕様とプロトタイプコードを考えてください。
     
 【テーマ】
@@ -149,7 +146,7 @@ window.copySeed = () => {
 // ========================================
 
 window.createProjectFromSeed = async () => {
-    if (!currentUserHash) { alert('ログインしてください'); return; }
+    if (!currentUser) { alert('ログインしてください'); return; }
 
     const interest = document.getElementById('input-interest').value.trim();
     const constraint = document.getElementById('constraint-content').innerText;
@@ -161,12 +158,10 @@ window.createProjectFromSeed = async () => {
     const title = `${interest} × ${constraint}`;
 
     try {
-        const res = await fetch('/api/wakuwaku/drafts', {
+        const data = await apiRequest('/api/wakuwaku/drafts', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, user_hash: currentUserHash })
+            body: JSON.stringify({ title })
         });
-        const data = await res.json();
         if (data.success) {
             await loadDrafts();
             document.getElementById('section-development').scrollIntoView({ behavior: 'smooth' });
@@ -188,10 +183,9 @@ window.createProjectFromSeed = async () => {
 // ========================================
 
 async function loadDrafts() {
-    if (!currentUserHash) return;
+    if (!currentUser) return;
     try {
-        const res = await fetch(`/api/wakuwaku/drafts?user_hash=${currentUserHash}`);
-        const drafts = await res.json();
+        const drafts = await apiRequest('/api/wakuwaku/drafts');
         const container = document.getElementById('draft-list');
 
         if (drafts.length === 0) {
@@ -249,12 +243,10 @@ window.saveDraft = async () => {
     const catch_copy = document.getElementById('edit-catchcopy').value;
 
     try {
-        const res = await fetch('/api/wakuwaku/drafts/save', {
+        await apiRequest('/api/wakuwaku/drafts/save', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 id: currentDraftId,
-                user_hash: currentUserHash,
                 url,
                 dev_obsession: memo,
                 protocol_log,
@@ -262,10 +254,8 @@ window.saveDraft = async () => {
                 catch_copy
             })
         });
-        if (res.ok) {
-            alert('保存しました！');
-            await loadDrafts();
-        }
+        alert('保存しました！');
+        await loadDrafts();
     } catch (e) { alert('保存に失敗しました'); }
 };
 
@@ -283,18 +273,15 @@ window.sealProduct = async () => {
     }
 
     try {
-        const res = await fetch('/api/wakuwaku/seal', {
+        const data = await apiRequest('/api/wakuwaku/seal', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 id: currentDraftId,
-                user_hash: currentUserHash,
                 protocol_log,
                 dialogue_log,
                 catch_copy
             })
         });
-        const data = await res.json();
         if (data.success) {
             alert('封印完了！');
             clearEditor();
@@ -313,12 +300,10 @@ window.sealProduct = async () => {
 window.confirmDeleteDraft = async (id) => {
     if (!confirm('本当に削除しますか？この操作は取り消せません。')) return;
     try {
-        const res = await fetch('/api/wakuwaku/delete-product', {
+        const data = await apiRequest('/api/wakuwaku/delete-product', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, user_hash: currentUserHash })
+            body: JSON.stringify({ id })
         });
-        const data = await res.json();
         if (data.success) {
             alert('削除しました');
             if (currentDraftId == id) {
@@ -337,18 +322,16 @@ window.confirmDeleteDraft = async (id) => {
 
 async function loadArchives() {
     try {
-        const res = await fetch('/api/wakuwaku/products');
-        allProducts = await res.json();
+        allProducts = await apiRequest('/api/wakuwaku/products');
 
         // Populate Filter Dropdown
         const filterSelect = document.getElementById('filter-user');
-        const users = [...new Set(allProducts.map(p => p.creator_user_hash).filter(u => u))];
+        const users = [...new Set(allProducts.map(p => p.creator_name).filter(u => u))];
         const currentSelection = filterSelect.value || 'all';
 
         let optionsHtml = '<option value="all">All Users</option>';
         users.forEach(u => {
-            const shortHash = u.length > 8 ? u.substring(0, 8) + '...' : u;
-            optionsHtml += `<option value="${u}">${shortHash}</option>`;
+            optionsHtml += `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`;
         });
         filterSelect.innerHTML = optionsHtml;
 
@@ -367,7 +350,7 @@ function filterArchives() {
     const filterUser = filterSelect.value;
     let filtered = allProducts;
     if (filterUser !== 'all') {
-        filtered = allProducts.filter(p => p.creator_user_hash === filterUser);
+        filtered = allProducts.filter(p => p.creator_name === filterUser);
     }
     renderGrid(filtered);
 }
@@ -382,12 +365,10 @@ function renderGrid(products) {
         return;
     }
 
-    const adminFlag = isAdmin();
+    const adminFlag = currentUser && currentUser.role === 'admin';
 
     grid.innerHTML = products.map(p => {
-        const creatorDisplay = p.creator_user_hash
-            ? (p.creator_user_hash.length > 8 ? p.creator_user_hash.substring(0, 8) + '...' : p.creator_user_hash)
-            : 'Unknown';
+        const creatorDisplay = p.creator_name || 'Unknown';
 
         return `
         <div class="bg-slate-900 border border-slate-700 rounded-xl p-6 hover:border-emerald-500/50 transition group flex flex-col justify-between h-full">
@@ -429,12 +410,10 @@ function renderGrid(products) {
 window.unsealProduct = async (id) => {
     if (!confirm('このプロダクトを下書きに戻しますか？（管理者のみ）')) return;
     try {
-        const res = await fetch('/api/wakuwaku/unseal', {
+        const data = await apiRequest('/api/wakuwaku/unseal', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, user_hash: currentUserHash })
+            body: JSON.stringify({ id })
         });
-        const data = await res.json();
         if (data.success) {
             alert('下書きに戻しました');
             loadArchives();
@@ -450,7 +429,7 @@ window.unsealProduct = async (id) => {
 
 async function loadBasePrompts() {
     try {
-        const res = await fetch('/api/wakuwaku/base-prompts');
+        const res = await fetch('/api/wakuwaku/base-prompts', { credentials: 'same-origin' });
         const data = await res.json();
         if (data.success && data.prompts) {
             basePrompts = data.prompts;

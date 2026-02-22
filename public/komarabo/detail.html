@@ -52,7 +52,7 @@
             <span class="font-outfit font-bold tracking-tight">困りごとラボ</span>
         </a>
         <div id="user-info" class="flex items-center gap-4">
-            <span id="display-user-hash"
+            <span id="display-user-name"
                 class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full uppercase">--</span>
             <button onclick="logout()"
                 class="text-[10px] font-bold text-slate-400 hover:text-red-400 transition">ログアウト</button>
@@ -86,7 +86,6 @@
                         Gemini 要件定義ログ
                     </h3>
                     <div class="space-y-4" id="gemini-logs">
-                        <!-- ここにAIとのログを表示（現在はデモ用） -->
                         <div class="p-4 bg-white rounded-2xl border border-slate-100 text-xs italic text-slate-400">
                             現在、要件定義ログの履歴はありません。
                         </div>
@@ -132,26 +131,25 @@
     </main>
 
     <script type="module">
-        import { escapeHtml, logout as commonLogout } from '../js/common.js';
+        import { escapeHtml, checkAuth, logout as commonLogout, apiRequest } from '../js/common.js';
 
         const API_BASE = '/api';
-        const currentUserHash = localStorage.getItem('user_hash');
         const urlParams = new URLSearchParams(window.location.search);
         const issueId = urlParams.get('id');
 
-        if (!currentUserHash) window.location.href = '../login.html';
+        let currentUser = null;
+
         if (!issueId) window.location.href = 'index.html';
 
-        document.getElementById('display-user-hash').textContent = currentUserHash;
-
-        async function init() {
+        async function initPage() {
+            currentUser = await checkAuth(true, 'komarabo');
+            document.getElementById('display-user-name').textContent = currentUser.display_name;
             await fetchIssueDetail();
         }
 
         async function fetchIssueDetail() {
             try {
-                const res = await fetch(`${API_BASE}/issues/detail?id=${issueId}`);
-                const data = await res.json();
+                const data = await apiRequest(`${API_BASE}/issues/detail?id=${issueId}`);
                 renderDetail(data);
                 scrollToBottom();
             } catch (err) {
@@ -170,8 +168,8 @@
 
             document.getElementById('issue-title').textContent = issue.title;
             document.getElementById('issue-description').textContent = issue.description;
-            document.getElementById('issue-requester').textContent = issue.requester_user_hash;
-            document.getElementById('issue-developer').textContent = issue.developer_user_hash || '未着手';
+            document.getElementById('issue-requester').textContent = issue.requester_name || '--';
+            document.getElementById('issue-developer').textContent = issue.developer_name || '未着手';
             document.getElementById('issue-date').textContent = new Date(issue.created_at).toLocaleString();
 
             // グローバルに保存して編集時に使う
@@ -186,8 +184,8 @@
             const actions = document.getElementById('issue-actions');
             actions.innerHTML = '';
 
-            const isRequester = currentUserHash === issue.requester_user_hash;
-            const isDeveloper = currentUserHash === issue.developer_user_hash;
+            const isRequester = currentUser.id === issue.requester_id;
+            const isDeveloper = currentUser.id === issue.developer_id;
 
             if (isRequester && issue.status !== 'closed') {
                 actions.innerHTML += `<button onclick="updateStatus('closed')" class="px-4 py-2 border-2 border-slate-900 text-slate-900 text-[10px] font-black rounded-lg hover:bg-slate-900 hover:text-white transition">解決を承認する</button>`;
@@ -204,12 +202,12 @@
 
             const timeline = document.getElementById('comment-timeline');
             timeline.innerHTML = comments.map(c => {
-                const isMine = c.user_hash === currentUserHash;
+                const isMine = c.user_id === currentUser.id;
                 return `
                     <div class="flex ${isMine ? 'justify-end' : 'justify-start'}">
                         <div class="max-w-[75%]">
                             <div class="flex items-center gap-2 mb-1 px-1 ${isMine ? 'justify-end' : ''}">
-                                <span class="text-[9px] font-bold text-slate-400">${escapeHtml(c.user_hash)}</span>
+                                <span class="text-[9px] font-bold text-slate-400">${escapeHtml(c.user_name || c.display_name || '')}</span>
                                 <span class="text-[9px] text-slate-300 font-medium">${new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                             <div class="p-4 rounded-2xl text-[13px] shadow-sm ${isMine ? 'bg-slate-900 text-white rounded-tr-none' : 'bg-slate-50 text-slate-700 rounded-tl-none border border-slate-100'
@@ -224,29 +222,19 @@
 
         function renderRequirementLog(logText, canEdit) {
             const container = document.getElementById('gemini-logs');
-            const header = document.querySelector('#gemini-logs-header'); // ヘッダー要素を取得するか、IDを付与する
-
-            // ヘッダーにIDがないので動的に探すか、HTML自体を書き換える
-            // ここではセクションごと書き換えではなく、中身を操作する
 
             const contentHtml = logText
                 ? `<div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm leading-relaxed text-sm text-slate-600 whitespace-pre-wrap">${escapeHtml(logText)}</div>`
                 : `<div class="p-4 bg-white rounded-2xl border border-slate-100 text-xs italic text-slate-400">現在、要件定義ログの履歴はありません。<br>開発者が相談者と対話しながら詳細要件をここにまとめていきます。</div>`;
 
-            // 編集ボタンの制御
             let editButtonHtml = '';
             if (canEdit) {
                 editButtonHtml = `<button onclick="editRequirement()" class="ml-auto text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-bold transition">編集する</button>`;
             }
 
-            // ヘッダー部分にボタンを挿入するために、親要素のHTML構造に依存するよりも、コンテナの上部にボタン用エリアを作るか、既存のDOMを辿る
-            // 最も安全なのは、gemini-logsセクション全体をJSで構築することだが、h3タグなどはHTML側にある
-            // ここでは h3 の隣にボタンを置きたい
-            // 親の section 要素を探す
             const section = container.parentElement;
             const h3 = section.querySelector('h3');
 
-            // 既存のボタンがあれば削除しないと重複する
             const existingBtn = h3.querySelector('button');
             if (existingBtn) existingBtn.remove();
 
@@ -279,37 +267,31 @@
                 </div>
             `;
 
-            // 編集モード中は編集ボタンを隠す（または無効化）
             const section = container.parentElement;
             const btn = section.querySelector('h3 button');
             if (btn) btn.style.display = 'none';
         };
 
         window.cancelEditReq = function () {
-            // 再描画
             renderRequirementLog(window.currentIssueData.requirement_log, true);
         };
 
         window.saveRequirement = async function () {
             const newText = document.getElementById('req-editor').value;
             try {
-                const res = await fetch(`${API_BASE}/issues/update-requirement`, {
+                const res = await apiRequest(`${API_BASE}/issues/update-requirement`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         id: issueId,
-                        requirement_log: newText,
-                        user_hash: currentUserHash
+                        requirement_log: newText
                     })
                 });
 
-                if (res.ok) {
-                    // 成功したらリロード（データを再取得して表示更新）
+                if (res.success) {
                     await fetchIssueDetail();
                     alert('要件定義ログを更新しました');
                 } else {
-                    const err = await res.json();
-                    alert('更新エラー: ' + (err.message || '不明なエラー'));
+                    alert('更新エラー: ' + (res.message || '不明なエラー'));
                 }
             } catch (e) {
                 console.error(e);
@@ -323,16 +305,13 @@
             if (!content) return;
 
             try {
-                const res = await fetch(`${API_BASE}/issues/comment`, {
+                await apiRequest(`${API_BASE}/issues/comment`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ issue_id: issueId, content, user_hash: currentUserHash })
+                    body: JSON.stringify({ issue_id: issueId, content })
                 });
-                if (res.ok) {
-                    input.value = '';
-                    await fetchIssueDetail();
-                    scrollToBottom();
-                }
+                input.value = '';
+                await fetchIssueDetail();
+                scrollToBottom();
             } catch (err) {
                 alert("コメントの投稿に失敗しました");
             }
@@ -341,12 +320,11 @@
         async function updateStatus(status) {
             if (!confirm(`解決を承認し、この課題をクローズしますか？`)) return;
             try {
-                const res = await fetch(`${API_BASE}/issues/update-status`, {
+                await apiRequest(`${API_BASE}/issues/update-status`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: issueId, status })
                 });
-                if (res.ok) fetchIssueDetail();
+                fetchIssueDetail();
             } catch (err) {
                 alert("更新に失敗しました");
             }
@@ -355,12 +333,11 @@
         async function unassignIssue() {
             if (!confirm('着手をキャンセルしますか？')) return;
             try {
-                const res = await fetch(`${API_BASE}/issues/unassign`, {
+                await apiRequest(`${API_BASE}/issues/unassign`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: issueId, user_hash: currentUserHash })
+                    body: JSON.stringify({ id: issueId })
                 });
-                if (res.ok) fetchIssueDetail();
+                fetchIssueDetail();
             } catch (err) {
                 alert("キャンセルに失敗しました");
             }
@@ -368,16 +345,13 @@
 
         async function postResolutionReport() {
             const msg = "✅ 解決しました！内容の確認をお願いします。";
-            const res = await fetch(`${API_BASE}/issues/comment`, {
+            await apiRequest(`${API_BASE}/issues/comment`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ issue_id: issueId, content: msg, user_hash: currentUserHash })
+                body: JSON.stringify({ issue_id: issueId, content: msg })
             });
-            if (res.ok) {
-                alert("解決報告を送りました！");
-                await fetchIssueDetail();
-                scrollToBottom();
-            }
+            alert("解決報告を送りました！");
+            await fetchIssueDetail();
+            scrollToBottom();
         }
 
         function logout() {
@@ -399,7 +373,7 @@
             }
         });
 
-        init();
+        initPage();
     </script>
 </body>
 

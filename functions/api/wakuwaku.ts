@@ -1,11 +1,10 @@
 import { Hono } from 'hono';
-import { Bindings } from './types';
-import { getUserByHash, verifyAdmin } from './helpers';
+import { Bindings, Variables } from './types';
 
-const wakuwaku = new Hono<{ Bindings: Bindings }>();
+const wakuwaku = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 // バージョン確認用
-wakuwaku.get('/version', (c) => c.json({ version: '2026-02-16-v4-fixed' }));
+wakuwaku.get('/version', (c) => c.json({ version: '2026-02-22-v1-oauth' }));
 
 // ベースプロンプト取得（管理画面から変更可能なあのプロンプト）
 wakuwaku.get('/base-prompt', async (c) => {
@@ -55,11 +54,9 @@ wakuwaku.get('/constraints/random', async (c) => {
 // ドラフト作成 (Development - Start)
 wakuwaku.post('/drafts', async (c) => {
     try {
-        const { title, user_hash } = await c.req.json();
-        if (!title || !user_hash) return c.json({ success: false, message: 'タイトルとユーザーハッシュは必須です' }, 400);
-
-        const user = await getUserByHash(c, user_hash);
-        if (!user) return c.json({ success: false, message: 'ユーザーが見つかりません' }, 404);
+        const user = c.get('user');
+        const { title } = await c.req.json();
+        if (!title) return c.json({ success: false, message: 'タイトルは必須です' }, 400);
 
         const res = await c.env.DB.prepare(
             "INSERT INTO products (creator_id, title, status) VALUES (?, ?, 'draft')"
@@ -75,16 +72,14 @@ wakuwaku.post('/drafts', async (c) => {
 // マイ・ドラフト一覧取得 (Development - Manage)
 wakuwaku.get('/drafts', async (c) => {
     try {
-        const user_hash = c.req.query('user_hash');
-        if (!user_hash) return c.json([]);
+        const user = c.get('user');
 
         const { results } = await c.env.DB.prepare(`
             SELECT products.* 
             FROM products 
-            JOIN users ON products.creator_id = users.id 
-            WHERE users.user_hash = ? AND products.status = 'draft'
+            WHERE products.creator_id = ? AND products.status = 'draft'
             ORDER BY products.created_at DESC
-        `).bind(user_hash).all();
+        `).bind(user.id).all();
         return c.json(results || []);
     } catch (err) {
         console.error('[wakuwaku/drafts] 一覧取得エラー:', err);
@@ -95,23 +90,21 @@ wakuwaku.get('/drafts', async (c) => {
 // ドラフト保存 (Development - Save Draft)
 wakuwaku.post('/drafts/save', async (c) => {
     try {
+        const user = c.get('user');
         const body = await c.req.json();
-        const { id, user_hash, url, dev_obsession, protocol_log, dialogue_log, catch_copy } = body;
+        const { id, url, dev_obsession, protocol_log, dialogue_log, catch_copy } = body;
 
         const productId = Number(id);
         if (isNaN(productId)) {
             return c.json({ success: false, message: 'IDが無効です' }, 400);
         }
 
-        // ユーザー確認
-        const product = await c.env.DB.prepare(`
-            SELECT products.*, users.user_hash 
-            FROM products 
-            JOIN users ON products.creator_id = users.id 
-            WHERE products.id = ?
-        `).bind(productId).first<{ user_hash: string }>();
+        // 権限確認（creator_id で直接確認）
+        const product = await c.env.DB.prepare(
+            'SELECT creator_id FROM products WHERE id = ?'
+        ).bind(productId).first<{ creator_id: string }>();
 
-        if (!product || product.user_hash !== user_hash) {
+        if (!product || product.creator_id !== user.id) {
             return c.json({ success: false, message: '権限がありません' }, 403);
         }
 
@@ -141,22 +134,20 @@ wakuwaku.post('/drafts/save', async (c) => {
 // 封印 (Development - Seal)
 wakuwaku.post('/seal', async (c) => {
     try {
-        const { id, user_hash, protocol_log, dialogue_log, catch_copy } = await c.req.json();
+        const user = c.get('user');
+        const { id, protocol_log, dialogue_log, catch_copy } = await c.req.json();
 
         // 必須チェック
         if (!protocol_log || !dialogue_log) {
             return c.json({ success: false, message: '仕様書と対話ログは必須です' }, 400);
         }
 
-        // ユーザー確認
-        const product = await c.env.DB.prepare(`
-            SELECT products.*, users.user_hash 
-            FROM products 
-            JOIN users ON products.creator_id = users.id 
-            WHERE products.id = ?
-        `).bind(id).first<{ user_hash: string }>();
+        // 権限確認
+        const product = await c.env.DB.prepare(
+            'SELECT creator_id FROM products WHERE id = ?'
+        ).bind(id).first<{ creator_id: string }>();
 
-        if (!product || product.user_hash !== user_hash) {
+        if (!product || product.creator_id !== user.id) {
             return c.json({ success: false, message: '権限がありません' }, 403);
         }
 
@@ -181,7 +172,7 @@ wakuwaku.get('/products', async (c) => {
         const { results } = await c.env.DB.prepare(`
             SELECT 
                 products.*,
-                users.user_hash as creator_user_hash
+                users.display_name as creator_name
             FROM products
             JOIN users ON products.creator_id = users.id
             WHERE products.status = 'published'
@@ -203,7 +194,8 @@ wakuwaku.get('/product/:id', async (c) => {
         const product = await c.env.DB.prepare(`
             SELECT 
                 products.*,
-                users.user_hash as creator_user_hash
+                users.display_name as creator_name,
+                users.id as creator_user_id
             FROM products
             JOIN users ON products.creator_id = users.id
             WHERE products.id = ?
@@ -220,32 +212,28 @@ wakuwaku.get('/product/:id', async (c) => {
     }
 });
 
-// プロダクト削除API (Keep for cleanup)
+// プロダクト削除API
 wakuwaku.post('/delete-product', async (c) => {
     try {
-        const { id, user_hash } = await c.req.json();
+        const user = c.get('user');
+        const { id } = await c.req.json();
 
         // プロダクト存在確認
-        const existingProduct = await c.env.DB.prepare(`
-            SELECT products.*, users.user_hash
-            FROM products
-            JOIN users ON products.creator_id = users.id
-            WHERE products.id = ?
-        `).bind(id).first<{ user_hash: string }>();
+        const existingProduct = await c.env.DB.prepare(
+            'SELECT creator_id FROM products WHERE id = ?'
+        ).bind(id).first<{ creator_id: string }>();
 
         if (!existingProduct) {
             return c.json({ success: false, message: 'プロダクトが見つかりません' }, 404);
         }
 
         // 投稿者本人確認
-        if (existingProduct.user_hash !== user_hash) {
+        if (existingProduct.creator_id !== user.id) {
             return c.json({ success: false, message: '自分の投稿のみ削除できます' }, 403);
         }
 
         // 削除実行
-        await c.env.DB.prepare(`
-            DELETE FROM products WHERE id = ?
-        `).bind(id).run();
+        await c.env.DB.prepare('DELETE FROM products WHERE id = ?').bind(id).run();
 
         return c.json({ success: true, message: 'プロダクトを削除しました' });
     } catch (err) {
@@ -257,12 +245,11 @@ wakuwaku.post('/delete-product', async (c) => {
 // 封印解除 (Admin Only - Unseal)
 wakuwaku.post('/unseal', async (c) => {
     try {
-        const { id, user_hash } = await c.req.json();
+        const user = c.get('user');
+        const { id } = await c.req.json();
 
-        // 実行者が管理者か確認
-        const isAdmin = await verifyAdmin(c, user_hash);
-
-        if (!isAdmin) {
+        // 管理者チェック（ミドルウェアは /wakuwaku/* で認証のみなので、ここで明示チェック）
+        if (user.role !== 'admin') {
             return c.json({ success: false, message: '権限がありません(Admin Only)' }, 403);
         }
 

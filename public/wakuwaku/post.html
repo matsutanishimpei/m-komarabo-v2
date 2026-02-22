@@ -193,11 +193,13 @@ User: いいね！でもここはもっと..."
 
         import { checkAuth, apiRequest, validateRequired } from '../js/common.js';
 
-        // 認証チェック
-        const auth = checkAuth(true, 'wakuwaku');
-        const currentUserHash = auth.userHash;
-
+        let currentUser = null;
         let basePrompts = [];
+
+        async function initPage() {
+            currentUser = await checkAuth(true, 'wakuwaku');
+            await loadBasePrompt();
+        }
 
         // ベースプロンプトを取得
         async function loadBasePrompt() {
@@ -264,8 +266,7 @@ User: いいね！でもここはもっと..."
                         title,
                         url: url || null,
                         initial_prompt_log: initialPromptLog,
-                        dev_obsession: devObsession || null,
-                        user_hash: currentUserHash
+                        dev_obsession: devObsession || null
                     })
                 });
 
@@ -283,7 +284,7 @@ User: いいね！でもここはもっと..."
         window.submitProduct = submitProduct;
 
         // 初期化
-        loadBasePrompt();
+        initPage();
     </script>
 </body>
 

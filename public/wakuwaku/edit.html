@@ -19,7 +19,7 @@
     <!-- Header -->
     <header class="border-b border-slate-800 px-6 py-4 mb-8 bg-slate-950/50 backdrop-blur-sm sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <a href="detail.html?id=${productId}"
+            <a href="index.html"
                 class="text-slate-400 hover:text-white transition text-sm font-medium flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
@@ -45,14 +45,17 @@
         import { injectWakuwakuBackground } from '../js/theme.js';
         injectWakuwakuBackground();
 
-        import { checkAuth, apiRequest, validateRequired, formatDateTime, showError, showLoading, escapeHtml } from '../js/common.js';
+        import { checkAuth, apiRequest, validateRequired, formatDateTime, showError, escapeHtml } from '../js/common.js';
 
-        // 認証チェック
-        const auth = checkAuth(true, 'wakuwaku');
-        const currentUserHash = auth.userHash;
+        let currentUser = null;
 
         const urlParams = new URLSearchParams(window.location.search);
         const productId = urlParams.get('id');
+
+        async function initPage() {
+            currentUser = await checkAuth(true, 'wakuwaku');
+            await loadProduct();
+        }
 
         async function loadProduct() {
             if (!productId) {
@@ -63,8 +66,8 @@
             try {
                 const product = await apiRequest(`/api/wakuwaku/product/${productId}`);
 
-                // 投稿者本人確認
-                if (product.creator_user_hash !== currentUserHash) {
+                // 投稿者本人確認（creator_user_id をサーバーから取得して比較）
+                if (product.creator_user_id !== currentUser.id) {
                     showError('editForm', '自分の投稿のみ編集できます');
                     return;
                 }
@@ -162,8 +165,7 @@
                         id: productId,
                         title,
                         url: url || null,
-                        dev_obsession: devObsession || null,
-                        user_hash: currentUserHash
+                        dev_obsession: devObsession || null
                     })
                 });
 
@@ -192,10 +194,7 @@
             try {
                 const data = await apiRequest('/api/wakuwaku/delete-product', {
                     method: 'POST',
-                    body: JSON.stringify({
-                        id: productId,
-                        user_hash: currentUserHash
-                    })
+                    body: JSON.stringify({ id: productId })
                 });
 
                 if (data.success) {
@@ -211,7 +210,7 @@
         }
         window.deleteProduct = deleteProduct;
 
-        loadProduct();
+        initPage();
     </script>
 </body>
 

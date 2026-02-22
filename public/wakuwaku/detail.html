@@ -63,17 +63,19 @@
     </main>
 
     <script type="module">
-        import { escapeHtml } from '../js/common.js';
+        import { escapeHtml, fetchAuthUser, apiRequest } from '../js/common.js';
         import { injectWakuwakuBackground } from '../js/theme.js';
         injectWakuwakuBackground();
 
         const urlParams = new URLSearchParams(window.location.search);
         const productId = urlParams.get('id');
-        const currentUserHash = localStorage.getItem('user_hash');
 
-
+        let currentUser = null;
 
         async function loadProduct() {
+            // 認証は任意（ログインしてなくても詳細は見れる想定）
+            currentUser = await fetchAuthUser();
+
             if (!productId) {
                 document.getElementById('productDetail').innerHTML = `
                     <div class="text-center py-20">
@@ -84,20 +86,15 @@
             }
 
             try {
-                const res = await fetch(`/api/wakuwaku/product/${productId}`);
-                // API might return error message in JSON
-                const product = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(product.message || 'Error fetching product');
-                }
+                const product = await apiRequest(`/api/wakuwaku/product/${productId}`);
 
                 const sealedDate = new Date(product.sealed_at || product.created_at);
-                const isOwner = currentUserHash && product.creator_user_hash === currentUserHash;
+                const isOwner = currentUser && product.creator_user_id === currentUser.id;
 
                 const protocol = product.protocol_log || product.initial_prompt_log || 'No protocol data';
                 const dialogue = product.dialogue_log;
                 const catchCopy = product.catch_copy;
+                const creatorName = product.creator_name || 'Unknown';
 
                 document.getElementById('productDetail').innerHTML = `
                     <!-- Product Header -->
@@ -110,12 +107,11 @@
                                 </div>
                                 ${catchCopy ? `<p class="text-xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400 font-serif italic mb-4">"${escapeHtml(catchCopy)}"</p>` : ''}
                                 <div class="flex items-center gap-4 text-sm text-slate-400">
-                                    <span>作成者: ${product.creator_user_hash ? escapeHtml(product.creator_user_hash.substring(0, 8)) + '...' : 'Unknown'}</span>
+                                    <span>作成者: ${escapeHtml(creatorName)}</span>
                                     <span>•</span>
                                     <span>封印日: ${product.sealed_at ? sealedDate.toLocaleDateString('ja-JP') : '未封印'}</span>
                                 </div>
                             </div>
-                            <!-- Edit Button only if draft or owner wants to fix metadata (optional, leaving simple for now) -->
                             ${isOwner && product.status === 'draft' ? `
                                 <a href="index.html" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition flex items-center gap-2">
                                     編集画面へ

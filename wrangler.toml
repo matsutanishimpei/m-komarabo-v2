@@ -5,3 +5,16 @@ pages_build_output_dir = "public"
 binding = "DB"
 database_name = "m-komarabo-v2-db"
 database_id = "d3ad4a59-fad0-482f-a1f1-8a6d95f026e3"
+
+# ========================================
+# Google OAuth 用シークレット設定
+# 以下のコマンドで設定してください:
+#
+#   npx wrangler pages secret put JWT_SECRET
+#   npx wrangler pages secret put GOOGLE_CLIENT_ID
+#   npx wrangler pages secret put GOOGLE_CLIENT_SECRET
+#   npx wrangler pages secret put GOOGLE_REDIRECT_URI
+#
+# GOOGLE_REDIRECT_URI の例:
+#   https://your-domain.pages.dev/api/auth/callback
+# ========================================

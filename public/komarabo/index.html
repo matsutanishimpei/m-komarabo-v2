@@ -44,7 +44,7 @@
             </div>
 
             <div class="flex items-center gap-4 text-sm">
-                <span class="text-slate-500 hidden md:inline">ログイン中: <strong id="display_user_hash"
+                <span class="text-slate-500 hidden md:inline">ログイン中: <strong id="display_user_name"
                         class="text-slate-800"></strong></span>
                 <button onclick="logout()"
                     class="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 transition text-slate-700 font-medium text-xs">ログアウト</button>
@@ -190,16 +190,24 @@
     </main>
 
     <script type="module">
-        import { checkAuth, logout as commonLogout, displayUserName, apiRequest, escapeHtml } from '../js/common.js';
+        import { checkAuth, logout as commonLogout, apiRequest, escapeHtml } from '../js/common.js';
 
-        // ログインチェック
-        const auth = checkAuth(true, 'komarabo');
-        const currentUserHash = auth.userHash;
-
+        let currentUser = null;
         let currentMode = 'requester';
 
-        // UIの初期化
-        displayUserName('display_user_hash');
+        // 初期化（非同期認証チェック）
+        async function initPage() {
+            currentUser = await checkAuth(true, 'komarabo');
+
+            // UIの初期化
+            document.getElementById('display_user_name').textContent = currentUser.display_name;
+
+            // 要件定義プロンプトの読み込み
+            loadRequirementPrompt();
+
+            // デフォルトで相談者モード
+            switchMode('requester');
+        }
 
         function logout() {
             commonLogout('/login.html');
@@ -237,15 +245,10 @@
         async function fetchIssues() {
             try {
                 const endpoint = currentMode === 'requester'
-                    ? `/api/issues/list?filter=mine&user_hash=${currentUserHash}`
+                    ? `/api/issues/list?filter=mine`
                     : `/api/issues/list?filter=all`;
 
-                const res = await fetch(endpoint);
-                if (!res.ok) {
-                    const errData = await res.json();
-                    throw new Error(errData.message || 'データ取得に失敗しました');
-                }
-                const data = await res.json();
+                const data = await apiRequest(endpoint);
 
                 if (!Array.isArray(data)) {
                     console.error("Data is not an array:", data);
@@ -299,8 +302,8 @@
             const assignedList = document.getElementById('list-developer-assigned');
             const availableList = document.getElementById('list-developer-available');
 
-            // 自分が着手中 (status=progress AND developer_user_hash=自分)
-            const myWork = data.filter(i => i.status === 'progress' && i.developer_user_hash === currentUserHash);
+            // 自分が着手中 (status=progress AND developer_id=自分)
+            const myWork = data.filter(i => i.status === 'progress' && i.developer_id === currentUser.id);
             // 未着手 (status=open)
             const available = data.filter(i => (i.status || 'open') === 'open');
 
@@ -311,7 +314,7 @@
                             <span class="text-[10px] font-bold ${isMyWork ? 'text-amber-500 bg-amber-50' : 'text-blue-500 bg-blue-50'} px-2 py-1 rounded tracking-widest uppercase">
                                 ${isMyWork ? 'Progress' : 'Open'}
                             </span>
-                            <span class="text-[10px] text-slate-400 font-medium">${escapeHtml(i.user_hash)}</span>
+                            <span class="text-[10px] text-slate-400 font-medium">${escapeHtml(i.requester_name || '')}</span>
                         </div>
                         <h5 class="text-lg font-bold text-slate-800 mb-2 truncate">${escapeHtml(i.title)}</h5>
                         <p class="text-sm text-slate-500 line-clamp-2 mb-6 h-10">${escapeHtml(i.description)}</p>
@@ -333,16 +336,12 @@
         async function takeIssue(id) {
             if (!confirm('この課題に着手しますか？')) return;
             try {
-                const res = await fetch('/api/issues/update-status', {
+                await apiRequest('/api/issues/update-status', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, status: 'progress', user_hash: currentUserHash })
+                    body: JSON.stringify({ id, status: 'progress' })
                 });
-                if (res.ok) {
-                    // 即時反映のためにデータをリロード
-                    fetchIssues();
-                    alert('着手しました！「現在着手中」へ移動しました。');
-                }
+                fetchIssues();
+                alert('着手しました！「現在着手中」へ移動しました。');
             } catch (err) {
                 alert('エラーが発生しました');
             }
@@ -352,15 +351,12 @@
         async function unassignIssue(id) {
             if (!confirm('この課題への挙手を下ろしますか？（未着手状態に戻ります）')) return;
             try {
-                const res = await fetch('/api/issues/unassign', {
+                await apiRequest('/api/issues/unassign', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, user_hash: currentUserHash })
+                    body: JSON.stringify({ id })
                 });
-                if (res.ok) {
-                    fetchIssues();
-                    alert('挙手を下ろしました。');
-                }
+                fetchIssues();
+                alert('挙手を下ろしました。');
             } catch (err) {
                 alert('エラーが発生しました');
             }
@@ -374,23 +370,15 @@
             if (!confirm('この課題を取り下げますか？\n※着手されていない課題のみ削除できます')) return;
 
             try {
-                const res = await fetch('/api/issues/delete', {
+                const result = await apiRequest('/api/issues/delete', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, user_hash: currentUserHash })
+                    body: JSON.stringify({ id })
                 });
-
-                const result = await res.json();
-
-                if (res.ok) {
-                    fetchIssues();
-                    alert(result.message || '課題を削除しました');
-                } else {
-                    alert(result.message || '削除に失敗しました');
-                }
+                fetchIssues();
+                alert(result.message || '課題を削除しました');
             } catch (err) {
                 console.error('Delete Error:', err);
-                alert('エラーが発生しました');
+                alert(err.message || 'エラーが発生しました');
             }
         }
         window.deleteIssue = deleteIssue;
@@ -405,16 +393,10 @@
             }
 
             try {
-                const res = await fetch('/api/issues/post', {
+                await apiRequest('/api/issues/post', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_hash: currentUserHash, title, description })
+                    body: JSON.stringify({ title, description })
                 });
-
-                if (!res.ok) {
-                    const error = await res.json();
-                    throw new Error(error.message);
-                }
 
                 fetchIssues();
                 alert('投稿しました！');
@@ -448,11 +430,8 @@
         }
         window.copyRequirementPrompt = copyRequirementPrompt;
 
-        // 初期化
-        loadRequirementPrompt();
-
-        // デフォルトで相談者モード
-        switchMode('requester');
+        // ページ初期化
+        initPage();
     </script>
 </body>
 

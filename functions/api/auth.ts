@@ -1,68 +1,300 @@
 import { Hono } from 'hono';
-import { Bindings } from './types';
+import { Bindings, Variables } from './types';
+import {
+    createJwt,
+    setAuthCookie,
+    clearAuthCookie,
+    generateUUID,
+    authMiddleware,
+    getTokenFromCookie,
+    verifyJwt,
+} from './helpers';
 
-const auth = new Hono<{ Bindings: Bindings }>();
+const auth = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-// パスワードをハッシュ化するユーティリティ
-async function hashPassword(password: string): Promise<string> {
-    const msgBuffer = new TextEncoder().encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
+// ========================================
+// Google OAuth ログインフロー
+// ========================================
 
-auth.post('/login', async (c) => {
-    const { user_hash, password } = await c.req.json();
-    const password_hash = await hashPassword(password);
+/**
+ * Step 1: Google OAuth 認可URL へリダイレクト
+ * GET /api/auth/google
+ */
+auth.get('/google', (c) => {
+    const redirectUri = c.env.GOOGLE_REDIRECT_URI;
+    const clientId = c.env.GOOGLE_CLIENT_ID;
 
-    // ユーザーの存在確認
-    const existingUser = await c.env.DB.prepare(
-        'SELECT user_hash, password_hash, is_admin, COALESCE(is_active, 1) as is_active FROM users WHERE user_hash = ?'
-    ).bind(user_hash).first<{ user_hash: string, password_hash: string, is_admin: number, is_active: number }>();
+    // state パラメータでCSRF防止 + リダイレクト先を保持
+    const redirectTo = c.req.query('redirect_to') || '/komarabo/index.html';
+    const state = btoa(JSON.stringify({ redirect_to: redirectTo }));
 
-    if (!existingUser) {
-        /* 
-         * 本来は登録とログインは分けるべきですが、
-         * プロトタイプとして簡略化のため、存在しない場合は自動登録します。
-         */
+    const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    authUrl.searchParams.set('client_id', clientId);
+    authUrl.searchParams.set('redirect_uri', redirectUri);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('scope', 'openid email profile');
+    authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('access_type', 'online');
+    authUrl.searchParams.set('prompt', 'select_account');
+
+    return c.redirect(authUrl.toString());
+});
+
+/**
+ * Step 2: Google コールバック処理
+ * GET /api/auth/callback
+ * - 認可コードを受け取り、トークンに交換
+ * - ユーザー情報を取得してUpsert
+ * - JWT Cookie を発行
+ */
+auth.get('/callback', async (c) => {
+    const code = c.req.query('code');
+    const stateParam = c.req.query('state');
+    const error = c.req.query('error');
+
+    if (error) {
+        console.error('[auth/callback] Google OAuth Error:', error);
+        return c.redirect('/login.html?error=oauth_denied');
+    }
+
+    if (!code) {
+        return c.redirect('/login.html?error=no_code');
+    }
+
+    // リダイレクト先を復元
+    let redirectTo = '/komarabo/index.html';
+    if (stateParam) {
         try {
-            await c.env.DB.prepare(
-                'INSERT INTO users (user_hash, password_hash, is_admin) VALUES (?, ?, 0)'
-            ).bind(user_hash, password_hash).run();
-
-            return c.json({
-                success: true,
-                isNew: true,
-                message: '新規登録・ログインしました',
-                user_hash: user_hash,
-                is_admin: 0,
-                auth_token: 'dummy_token_' + Date.now()
-            });
-        } catch (e) {
-            console.error('[auth/login] 新規登録エラー:', e);
-            return c.json({ success: false, message: '登録に失敗しました' }, 500);
+            const stateData = JSON.parse(atob(stateParam));
+            if (stateData.redirect_to && stateData.redirect_to.startsWith('/') && !stateData.redirect_to.startsWith('//')) {
+                redirectTo = stateData.redirect_to;
+            }
+        } catch {
+            // state パースエラーは無視
         }
     }
 
-    // 無効化されたユーザーのチェック
-    if (!existingUser.is_active) {
-        return c.json({ success: false, message: 'このアカウントは無効化されています' }, 403);
-    }
-
-    // 既存ユーザーの認証（ハッシュ化パスワードのみ比較）
-    if (existingUser.password_hash === password_hash) {
-        return c.json({
-            success: true,
-            isNew: false,
-            message: 'ログインしました',
-            user_hash: existingUser.user_hash,
-            is_admin: existingUser.is_admin,
-            auth_token: 'dummy_token_' + Date.now()
+    try {
+        // 1. 認可コードをアクセストークンに交換
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                code,
+                client_id: c.env.GOOGLE_CLIENT_ID,
+                client_secret: c.env.GOOGLE_CLIENT_SECRET,
+                redirect_uri: c.env.GOOGLE_REDIRECT_URI,
+                grant_type: 'authorization_code',
+            }),
         });
-    } else {
-        return c.json({ success: false, message: 'パスワードが違います' }, 401);
+
+        if (!tokenRes.ok) {
+            const errBody = await tokenRes.text();
+            console.error('[auth/callback] Token exchange failed:', errBody);
+            return c.redirect('/login.html?error=token_exchange_failed');
+        }
+
+        const tokenData = await tokenRes.json() as { access_token: string; id_token: string };
+
+        // 2. Google ユーザー情報を取得
+        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        });
+
+        if (!userInfoRes.ok) {
+            console.error('[auth/callback] UserInfo fetch failed');
+            return c.redirect('/login.html?error=userinfo_failed');
+        }
+
+        const googleUser = await userInfoRes.json() as {
+            sub: string;
+            email: string;
+            name: string;
+            picture: string;
+        };
+
+        // 3. Upsert: google_sub をキーにDBを検索
+        const existingUser = await c.env.DB.prepare(
+            'SELECT id, display_name, role, is_profile_completed FROM users WHERE google_sub = ?'
+        ).bind(googleUser.sub).first<{
+            id: string;
+            display_name: string;
+            role: string;
+            is_profile_completed: number;
+        }>();
+
+        let userId: string;
+        let displayName: string;
+        let role: string;
+
+        if (!existingUser) {
+            // 新規ユーザー: UUID を発行して作成
+            userId = generateUUID();
+            displayName = googleUser.name;
+            role = 'student';
+
+            await c.env.DB.prepare(`
+                INSERT INTO users (id, google_sub, email, display_name, avatar_url, role, is_profile_completed)
+                VALUES (?, ?, ?, ?, ?, 'student', FALSE)
+            `).bind(userId, googleUser.sub, googleUser.email, displayName, googleUser.picture).run();
+
+            console.log(`[auth/callback] 新規ユーザー作成: ${userId}`);
+        } else {
+            // 既存ユーザー: email と avatar_url を最新に更新
+            userId = existingUser.id;
+            role = existingUser.role;
+
+            if (existingUser.is_profile_completed) {
+                // プロフィール完了済み: display_name は上書きしない
+                displayName = existingUser.display_name;
+                await c.env.DB.prepare(`
+                    UPDATE users SET email = ?, avatar_url = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                `).bind(googleUser.email, googleUser.picture, userId).run();
+            } else {
+                // 未完了: display_name も Google から更新
+                displayName = googleUser.name;
+                await c.env.DB.prepare(`
+                    UPDATE users SET email = ?, display_name = ?, avatar_url = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                `).bind(googleUser.email, displayName, googleUser.picture, userId).run();
+            }
+
+            console.log(`[auth/callback] 既存ユーザー更新: ${userId}`);
+        }
+
+        // 4. JWT 発行
+        const token = await createJwt(c.env.JWT_SECRET, {
+            sub: googleUser.sub,
+            id: userId,
+            display_name: displayName,
+            role,
+        });
+
+        // 5. HttpOnly Cookie に設定してリダイレクト
+        setAuthCookie(c, token);
+        return c.redirect(redirectTo);
+
+    } catch (err) {
+        console.error('[auth/callback] 処理エラー:', err);
+        return c.redirect('/login.html?error=internal');
     }
 });
+
+// ========================================
+// 認証状態チェック API
+// ========================================
+
+/**
+ * GET /api/auth/me
+ * フロントエンドが認証状態を確認するためのエンドポイント
+ * JWTの中身（id, display_name, role）を返す
+ * ※ sub はフロントに返さない
+ */
+auth.get('/me', async (c) => {
+    const token = getTokenFromCookie(c);
+    if (!token) {
+        return c.json({ authenticated: false }, 401);
+    }
+
+    const payload = await verifyJwt(c.env.JWT_SECRET, token);
+    if (!payload) {
+        clearAuthCookie(c);
+        return c.json({ authenticated: false }, 401);
+    }
+
+    // DBから最新情報を取得
+    const user = await c.env.DB.prepare(
+        'SELECT id, display_name, role, avatar_url, is_profile_completed FROM users WHERE id = ?'
+    ).bind(payload.id).first<{
+        id: string;
+        display_name: string;
+        role: string;
+        avatar_url: string | null;
+        is_profile_completed: number;
+    }>();
+
+    if (!user) {
+        clearAuthCookie(c);
+        return c.json({ authenticated: false }, 401);
+    }
+
+    return c.json({
+        authenticated: true,
+        user: {
+            id: user.id,
+            display_name: user.display_name,
+            role: user.role,
+            avatar_url: user.avatar_url,
+            is_profile_completed: !!user.is_profile_completed,
+        },
+    });
+});
+
+// ========================================
+// プロフィール更新 API
+// ========================================
+
+/**
+ * POST /api/auth/profile
+ * display_name を変更し、is_profile_completed を true にしてJWT再発行
+ */
+auth.post('/profile', authMiddleware, async (c) => {
+    const user = c.get('user');
+    const { display_name } = await c.req.json<{ display_name: string }>();
+
+    if (!display_name || !display_name.trim()) {
+        return c.json({ success: false, message: '表示名を入力してください' }, 400);
+    }
+
+    const trimmedName = display_name.trim();
+    if (trimmedName.length > 50) {
+        return c.json({ success: false, message: '表示名は50文字以内にしてください' }, 400);
+    }
+
+    // DB更新: display_name と is_profile_completed
+    await c.env.DB.prepare(`
+        UPDATE users SET display_name = ?, is_profile_completed = TRUE, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    `).bind(trimmedName, user.id).run();
+
+    // JWT再発行（新しいdisplay_nameで）
+    const newToken = await createJwt(c.env.JWT_SECRET, {
+        sub: user.sub,
+        id: user.id,
+        display_name: trimmedName,
+        role: user.role,
+    });
+
+    setAuthCookie(c, newToken);
+
+    return c.json({
+        success: true,
+        message: 'プロフィールを更新しました',
+        user: {
+            id: user.id,
+            display_name: trimmedName,
+            role: user.role,
+        },
+    });
+});
+
+// ========================================
+// ログアウト
+// ========================================
+
+/**
+ * POST /api/auth/logout
+ * Cookie を削除してログアウト
+ */
+auth.post('/logout', (c) => {
+    clearAuthCookie(c);
+    return c.json({ success: true, message: 'ログアウトしました' });
+});
+
+// ========================================
+// エラーハンドラ
+// ========================================
 
 auth.onError((err, c) => {
     console.error('[auth] 未処理エラー:', err);

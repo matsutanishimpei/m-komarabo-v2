@@ -1,33 +1,29 @@
 import { Hono } from 'hono';
-import { Bindings } from './types';
-import { verifyAdmin } from './helpers';
+import { Bindings, Variables } from './types';
 
-const admin = new Hono<{ Bindings: Bindings }>();
+const admin = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 // ========================================
-// 管理者チェック API
+// ※ adminGuard ミドルウェアにより、
+//    すべてのルートは role === 'admin' が保証されています
 // ========================================
 
-admin.post('/check', async (c) => {
-    try {
-        const { user_hash } = await c.req.json();
-        const isAdmin = await verifyAdmin(c, user_hash);
-        return c.json({ is_admin: isAdmin });
-    } catch (err) {
-        console.error('[admin/check] チェックエラー:', err);
-        return c.json({ is_admin: false }, 500);
-    }
+// ========================================
+// 管理者チェック API (フロントエンド用)
+// ========================================
+
+admin.get('/check', async (c) => {
+    // ミドルウェアを通過 = admin確定
+    const user = c.get('user');
+    return c.json({ is_admin: true, user_id: user.id });
 });
 
 // ========================================
 // 統計情報 API
 // ========================================
 
-admin.post('/stats', async (c) => {
+admin.get('/stats', async (c) => {
     try {
-        const { user_hash } = await c.req.json();
-        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
-
         const userCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM users').first<{ count: number }>();
         const issueCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM issues').first<{ count: number }>();
         const productCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM products').first<{ count: number }>();
@@ -49,13 +45,10 @@ admin.post('/stats', async (c) => {
 // ユーザー一覧 API
 // ========================================
 
-admin.post('/users', async (c) => {
+admin.get('/users', async (c) => {
     try {
-        const { user_hash } = await c.req.json();
-        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
-
         const { results } = await c.env.DB.prepare(
-            'SELECT user_hash, created_at, is_admin, COALESCE(is_active, 1) as is_active FROM users ORDER BY created_at DESC'
+            'SELECT id, display_name, email, role, avatar_url, is_profile_completed, COALESCE(is_active, 1) as is_active, created_at FROM users ORDER BY created_at DESC'
         ).all();
 
         return c.json({ users: results });
@@ -66,69 +59,77 @@ admin.post('/users', async (c) => {
 });
 
 // ========================================
-// ユーザー管理者権限の切り替え API
+// ユーザーロールの切り替え API
 // ========================================
 
-admin.post('/users/toggle-admin', async (c) => {
+admin.post('/users/toggle-role', async (c) => {
     try {
-        const { user_hash, target_user_hash } = await c.req.json();
-        if (!(await verifyAdmin(c, user_hash))) return c.json({ success: false, message: 'Unauthorized' }, 403);
+        const currentUser = c.get('user');
+        const { target_user_id } = await c.req.json();
 
         // 自分自身の権限は変更不可
-        if (user_hash === target_user_hash) {
-            return c.json({ success: false, message: '自分自身の管理者権限は変更できません' }, 400);
+        if (currentUser.id === target_user_id) {
+            return c.json({ success: false, message: '自分自身のロールは変更できません' }, 400);
         }
 
         // 現在の状態を取得して反転
         const target = await c.env.DB.prepare(
-            'SELECT is_admin FROM users WHERE user_hash = ?'
-        ).bind(target_user_hash).first<{ is_admin: number }>();
+            'SELECT role FROM users WHERE id = ?'
+        ).bind(target_user_id).first<{ role: string }>();
 
         if (!target) {
             return c.json({ success: false, message: 'ユーザーが見つかりません' }, 404);
         }
 
-        const newAdminStatus = target.is_admin ? 0 : 1;
+        const newRole = target.role === 'admin' ? 'student' : 'admin';
         await c.env.DB.prepare(
-            'UPDATE users SET is_admin = ? WHERE user_hash = ?'
-        ).bind(newAdminStatus, target_user_hash).run();
+            'UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+        ).bind(newRole, target_user_id).run();
 
-        return c.json({ success: true, is_admin: newAdminStatus, message: newAdminStatus ? '管理者権限を付与しました' : '管理者権限を解除しました' });
+        return c.json({
+            success: true,
+            role: newRole,
+            message: newRole === 'admin' ? '管理者権限を付与しました' : '管理者権限を解除しました'
+        });
     } catch (err) {
-        console.error('[admin/users/toggle-admin] 権限変更エラー:', err);
+        console.error('[admin/users/toggle-role] 権限変更エラー:', err);
         return c.json({ success: false, message: '権限の変更に失敗しました' }, 500);
     }
 });
 
 // ========================================
-// ユーザー有効/無効の切り替え API (論理削除・復活)
+// ユーザー有効/無効の切り替え API
 // ========================================
 
 admin.post('/users/toggle-active', async (c) => {
     try {
-        const { user_hash, target_user_hash } = await c.req.json();
-        if (!(await verifyAdmin(c, user_hash))) return c.json({ success: false, message: 'Unauthorized' }, 403);
+        const currentUser = c.get('user');
+        const { target_user_id } = await c.req.json();
 
-        // 自分自身は無効化不可
-        if (user_hash === target_user_hash) {
-            return c.json({ success: false, message: '自分自身を無効化することはできません' }, 400);
+        // 自分自身は変更不可
+        if (currentUser.id === target_user_id) {
+            return c.json({ success: false, message: '自分自身のステータスは変更できません' }, 400);
         }
 
         // 現在の状態を取得して反転
         const target = await c.env.DB.prepare(
-            'SELECT COALESCE(is_active, 1) as is_active FROM users WHERE user_hash = ?'
-        ).bind(target_user_hash).first<{ is_active: number }>();
+            'SELECT is_active FROM users WHERE id = ?'
+        ).bind(target_user_id).first<{ is_active: number }>();
 
         if (!target) {
             return c.json({ success: false, message: 'ユーザーが見つかりません' }, 404);
         }
 
-        const newActiveStatus = target.is_active ? 0 : 1;
+        const newActive = target.is_active ? 0 : 1;
         await c.env.DB.prepare(
-            'UPDATE users SET is_active = ? WHERE user_hash = ?'
-        ).bind(newActiveStatus, target_user_hash).run();
+            'UPDATE users SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+        ).bind(newActive, target_user_id).run();
 
-        return c.json({ success: true, is_active: newActiveStatus, message: newActiveStatus ? 'ユーザーを復活させました' : 'ユーザーを無効化しました' });
+        return c.json({
+            success: true,
+            is_active: newActive,
+            message: newActive ? 'ユーザーを有効化しました' : 'ユーザーを無効化しました'
+        });
     } catch (err) {
         console.error('[admin/users/toggle-active] ステータス変更エラー:', err);
         return c.json({ success: false, message: 'ステータスの変更に失敗しました' }, 500);
@@ -139,21 +140,18 @@ admin.post('/users/toggle-active', async (c) => {
 // 最近の投稿 API
 // ========================================
 
-admin.post('/recent-activity', async (c) => {
+admin.get('/recent-activity', async (c) => {
     try {
-        const { user_hash } = await c.req.json();
-        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
-
-        const issues = await c.env.DB.prepare(`
-            SELECT issues.title, issues.created_at, users.user_hash, 'コマラボ' as type
+        const issuesResult = await c.env.DB.prepare(`
+            SELECT issues.title, issues.created_at, users.display_name as user_name, 'コマラボ' as type
             FROM issues
             JOIN users ON issues.requester_id = users.id
             ORDER BY issues.created_at DESC
             LIMIT 5
         `).all();
 
-        const products = await c.env.DB.prepare(`
-            SELECT products.title, products.created_at, users.user_hash, 'ワクワク' as type
+        const productsResult = await c.env.DB.prepare(`
+            SELECT products.title, products.created_at, users.display_name as user_name, 'ワクワク' as type
             FROM products
             JOIN users ON products.creator_id = users.id
             ORDER BY products.created_at DESC
@@ -161,7 +159,7 @@ admin.post('/recent-activity', async (c) => {
         `).all();
 
         // @ts-ignore — results type from D1 is loosely typed
-        const activities = [...(issues.results || []), ...(products.results || [])]
+        const activities = [...(issuesResult.results || []), ...(productsResult.results || [])]
             .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             .slice(0, 10);
 
@@ -178,8 +176,7 @@ admin.post('/recent-activity', async (c) => {
 
 admin.post('/update-base-prompt', async (c) => {
     try {
-        const { prompt, user_hash } = await c.req.json();
-        if (!(await verifyAdmin(c, user_hash))) return c.json({ success: false, message: '管理者権限が必要です' }, 403);
+        const { prompt } = await c.req.json();
 
         await c.env.DB.prepare(
             "UPDATE site_configs SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = 'wakuwaku_base_prompt'"
@@ -196,11 +193,8 @@ admin.post('/update-base-prompt', async (c) => {
 // ベースプロンプト管理 API (Multiple)
 // ========================================
 
-admin.post('/base-prompts/list', async (c) => {
+admin.get('/base-prompts/list', async (c) => {
     try {
-        const { user_hash } = await c.req.json();
-        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
-
         const { results } = await c.env.DB.prepare('SELECT id, label, prompt FROM base_prompts ORDER BY id ASC').all();
         return c.json({ results });
     } catch (err) {
@@ -211,8 +205,7 @@ admin.post('/base-prompts/list', async (c) => {
 
 admin.post('/base-prompts/save', async (c) => {
     try {
-        const { user_hash, id, label, prompt } = await c.req.json();
-        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
+        const { id, label, prompt } = await c.req.json();
 
         if (!label || !prompt) {
             return c.json({ success: false, message: 'ラベルとプロンプトは必須です' }, 400);
@@ -237,9 +230,7 @@ admin.post('/base-prompts/save', async (c) => {
 
 admin.post('/base-prompts/delete', async (c) => {
     try {
-        const { user_hash, id } = await c.req.json();
-        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
-
+        const { id } = await c.req.json();
         await c.env.DB.prepare('DELETE FROM base_prompts WHERE id = ?').bind(id).run();
         return c.json({ success: true, message: '削除しました' });
     } catch (err) {
@@ -254,8 +245,7 @@ admin.post('/base-prompts/delete', async (c) => {
 
 admin.post('/update-requirement-prompt', async (c) => {
     try {
-        const { prompt, user_hash } = await c.req.json();
-        if (!(await verifyAdmin(c, user_hash))) return c.json({ success: false, message: '管理者権限が必要です' }, 403);
+        const { prompt } = await c.req.json();
 
         // UPSERT: キーが存在しない場合は INSERT、存在する場合は UPDATE
         await c.env.DB.prepare(
@@ -273,11 +263,8 @@ admin.post('/update-requirement-prompt', async (c) => {
 // 制約スロット管理 API
 // ========================================
 
-admin.post('/constraints/list', async (c) => {
+admin.get('/constraints/list', async (c) => {
     try {
-        const { user_hash } = await c.req.json();
-        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
-
         const { results } = await c.env.DB.prepare('SELECT id, category, content FROM slot_constraints ORDER BY id DESC').all();
         return c.json(results);
     } catch (err) {
@@ -288,8 +275,7 @@ admin.post('/constraints/list', async (c) => {
 
 admin.post('/constraints', async (c) => {
     try {
-        const { user_hash, category, content } = await c.req.json();
-        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
+        const { category, content } = await c.req.json();
 
         await c.env.DB.prepare('INSERT INTO slot_constraints (category, content) VALUES (?, ?)').bind(category, content).run();
         return c.json({ success: true });
@@ -301,9 +287,7 @@ admin.post('/constraints', async (c) => {
 
 admin.post('/constraints/delete', async (c) => {
     try {
-        const { user_hash, id } = await c.req.json();
-        if (!(await verifyAdmin(c, user_hash))) return c.json({ error: 'Unauthorized' }, 403);
-
+        const { id } = await c.req.json();
         await c.env.DB.prepare('DELETE FROM slot_constraints WHERE id = ?').bind(id).run();
         return c.json({ success: true });
     } catch (err) {
