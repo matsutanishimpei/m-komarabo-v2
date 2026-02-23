@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>運用テスト仕様書 - M-Komarabo v2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+        }
+
+        .checkbox-cell {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        input[type="checkbox"] {
+            width: 1.25rem;
+            height: 1.25rem;
+            accent-color: #3b82f6;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body class="p-8">
+    <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-10">
+
+        <div class="mb-10 text-center border-b border-slate-200 pb-8">
+            <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight mb-2">M-Komarabo v2 運用テスト仕様書（手動テスト）</h1>
+            <p class="text-slate-500">全体のエコシステム（認証・Komarabo・Wakuwaku・Admin）が正しく回ることを確認するためのチェックリスト</p>
+        </div>
+
+        <div class="space-y-12">
+
+            <!-- 1. 認証・プロフィール編 -->
+            <section>
+                <div class="flex items-center gap-3 mb-4">
+                    <span
+                        class="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-bold">1</span>
+                    <h2 class="text-xl font-bold text-slate-800">認証・グローバル設定 (Auth & Profile)</h2>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                            <tr>
+                                <th class="px-4 py-3 w-16 text-center">完了</th>
+                                <th class="px-4 py-3 w-48">テスト項目</th>
+                                <th class="px-4 py-3">操作手順</th>
+                                <th class="px-4 py-3">期待される結果（正常系）</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>Googleログイン（新規）</td>
+                                <td>未ログイン状態でトップ画面から「Googleでログイン」を実行し、新規アカウントで認証する。</td>
+                                <td>ログインに成功し、JWT Cookieが発行される。「初回プロフィール登録」のアラートなどは出ずにダッシュボードへ遷移する。</td>
+                            </tr>
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>プロフィール更新表示</td>
+                                <td>ダッシュボード右上のユーザー名ボタンからプロフィールへ遷移し、表示名と役割を更新する。</td>
+                                <td>更新が成功し、各サービスのヘッダー等に新しい表示名が即座に反映されること。</td>
+                            </tr>
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>セキュアログアウト</td>
+                                <td>プロフィール画面などから「ログアウト」をクリックする。</td>
+                                <td>Cookie（Token）が破棄され、ログイン画面へリダイレクトされる。保護されたURLを手動入力してもアクセスできないこと。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 2. Komarabo編 -->
+            <section>
+                <div class="flex items-center gap-3 mb-4">
+                    <span
+                        class="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-bold">2</span>
+                    <h2 class="text-xl font-bold text-slate-800">こまらぼ (Issue Tracker)</h2>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                            <tr>
+                                <th class="px-4 py-3 w-16 text-center">完了</th>
+                                <th class="px-4 py-3 w-48">テスト項目</th>
+                                <th class="px-4 py-3">操作手順</th>
+                                <th class="px-4 py-3">期待される結果（正常系）</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>課題の新規投稿（相談者）</td>
+                                <td>相談者モードで新規課題の「タイトル」「詳細」にエスケープすべき文字（`
+                                    <script>`など）を含めて投稿する。</td>
+                                <td>「募集中 (Open)」一覧にスクリプトが実行されることなく安全に表示されること。</td>
+                            </tr>
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>課題の着手（開発者）</td>
+                                <td>別のユーザー（または開発者モード）で「募集中」の課題を選択し、「着手する」をクリックする。</td>
+                                <td>課題が「現在着手中 (Progress)」に移動し、担当者が自分に割り当てられること。</td>
+                            </tr>
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>Gemini要件定義の編集</td>
+                                <td>課題詳細を開き、Gemini要件定義ログを「編集する」ボタンから修正・保存する。</td>
+                                <td>更新が反映され、入力した文字列がエスケープ（改行など維持）されて表示されること。</td>
+                            </tr>
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>コメントによるやり取り</td>
+                                <td>課題詳細にて、開発者と相談者のそれぞれからコメントを送信する。</td>
+                                <td>タイムラインに相手と自分の色が分かれて表示され、リアルタイムにやり取りができること。</td>
+                            </tr>
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>解決報告とクローズ</td>
+                                <td>開発者が「解決報告を送る」をクリック後、相談者が「解決を承認する」をクリックする。</td>
+                                <td>ステータスが「解決済 (Closed)」になり、以降の開発者の編集アクションが非表示になること。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 3. Wakuwaku編 -->
+            <section>
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-bold">3</span>
+                    <h2 class="text-xl font-bold text-slate-800">ワクワク試作室 (Prototyping)</h2>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                            <tr>
+                                <th class="px-4 py-3 w-16 text-center">完了</th>
+                                <th class="px-4 py-3 w-48">テスト項目</th>
+                                <th class="px-4 py-3">操作手順</th>
+                                <th class="px-4 py-3">期待される結果（正常系）</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>ランダム制約生成 (Ideation)</td>
+                                <td>興味・関心を入力し、傾向（ベースプロンプト）を選んで「プロンプト生成」をクリックする。</td>
+                                <td>バックエンドからランダムな制約が取得され、選んだベースプロンプトのテンプレートに統合されて出力されること。</td>
+                            </tr>
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>下書きの作成と自動保存</td>
+                                <td>「この設定でプロジェクトを作成（下書き保存）」を押下し、Draftsタブへ移行。各種ログを入力して「保存」する。</td>
+                                <td>DevelopmentのDraft list一覧にプロジェクトが並び、入力した内容が次回リロード後も保持されること。</td>
+                            </tr>
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>本公開（封印プロセス）</td>
+                                <td>下書きに対して必要なログ等を入力し、「封印する」ボタンを押下する。</td>
+                                <td>下書き一覧から消え、Gallery（みんなの広場）に「封印済み (Published)」として公開されること。</td>
+                            </tr>
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>未ログインでのGallery閲覧</td>
+                                <td>シークレットウィンドウ等で未ログインの状態で `/ wakuwaku / index.html` および作品詳細ページを開く。</td>
+                                <td>パブリックAPIにより、非ログインユーザでも過去の「封印済」の作品一覧と詳細（URL等）が閲覧できること。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 4. Admin編 -->
+            <section>
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-bold">4</span>
+                    <h2 class="text-xl font-bold text-slate-800">管理画面 (Admin Dashboard)</h2>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                            <tr>
+                                <th class="px-4 py-3 w-16 text-center">完了</th>
+                                <th class="px-4 py-3 w-48">テスト項目</th>
+                                <th class="px-4 py-3">操作手順</th>
+                                <th class="px-4 py-3">期待される結果（正常系）</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>管理者ガード（権限チェック）</td>
+                                <td>「一般 (user)」権限のユーザーで `/ admin / index.html` にアクセスする。</td>
+                                <td>403 Forbiddenなどのエラーにならず安全にトップページ等へリダイレクトされること。</td>
+                            </tr>
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>ベースプロンプト管理</td>
+                                <td>管理者ユーザーでWakuwaku用の新しい「ベースプロンプト」を追加・編集する。</td>
+                                <td>一覧に即座に反映され、WakuwakuのIdeationタブのドロップダウンにも選択肢として追加されること。</td>
+                            </tr>
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>制約スロット(Constraints)管理</td>
+                                <td>「新しい制約を追加」からカテゴリと内容を入力して保存し、その後削除をテストする。</td>
+                                <td>追加したデータがリストに即時反映され、削除時も正しくリストから消えること。（Wakuwakuへの反映も確認できれば尚可）</td>
+                            </tr>
+                            <tr>
+                                <td class="checkbox-cell"><input type="checkbox"></td>
+                                <td>ユーザー権限・ステータス変更</td>
+                                <td>ユーザー管理一覧から、他のユーザーの「管理者/一般」「有効/無効」を切り替える。</td>
+                                <td>DB上のRoleやActiveフラグが更新され、該当ユーザのログイン（無効時）や管理者画面へのアクセスに制限（もしくは許可）がかかること。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </div>
+
+        <div class="mt-12 text-center text-sm text-slate-400">
+            <p>※ 本仕様書はブラウザ上でチェックマークを入れながら通しテスト・QAを行うための簡易ツールです。<br>テスト結果を保存するためにはチェックを入れた状態で「PDFとして印刷（保存）」をしてください。</p>
+        </div>
+    </div>
+</body>
+</html>
