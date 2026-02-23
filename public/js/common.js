@@ -82,11 +82,16 @@ export async function checkAuth(required = true, redirectTheme = 'komarabo') {
             const currentPath = encodeURIComponent(location.pathname + location.search);
             const hash = redirectTheme === 'wakuwaku' ? '#wakuwaku' : '#komarabo';
             location.href = `/login.html?redirect_to=${currentPath}${hash}`;
-            throw new Error('Not logged in');
+            // リダイレクト完了までUIを表示させないために永遠に待機するPromiseを返す
+            return new Promise(() => { });
         }
+        document.body.style.visibility = 'visible';
+        document.body.style.opacity = '1';
         return null;
     }
 
+    document.body.style.visibility = 'visible';
+    document.body.style.opacity = '1';
     return user;
 }
 

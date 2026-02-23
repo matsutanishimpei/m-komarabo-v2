@@ -12,37 +12,39 @@
   - Cloudflare Pages Functions 上で動作。超軽量かつ高速なルーティングを提供。
 - **Database**: Cloudflare D1 (SQLite-based)
   - フルマネージドなサーバーレスリレーショナルデータベース。
-- **AI Integration**: Gemini API (gemini-2.5-flash)
-  - 投稿に対する共感コメント生成などに活用。
+- **AI Integration**: Gemini API
+  - 課題の要件定義ログ生成や、試作室でのプロトタイプシード(Ideation)生成などに活用。
 
 ---
 
 ## 2. 実装済み機能
 
-### 🔐 認証システム（二重ハッシュ化プロトコル）
-本プロジェクトでは、セキュリティ向上のためクライアントとサーバーの両方でハッシュ化を行うプロトコルを採用しています。
+### 🔐 認証システム（Google OAuth + JWT）
+現在のシステムは、利便性とセキュリティを考慮して **Google OAuth 2.0** を用いた認証基盤（JWT Cookie ベース）へ移行完了しています。
 
-1.  **Client-Side Hashing**: 
-    - ブラウザ上で入力された生パスワードを `SHA-256` で1回ハッシュ化します。
-    - これにより、通信経路（HTTPS下でも）に生パスワードが流れるのを防ぎます。
-2.  **Server-Side Hashing**:
-    - 受信したハッシュ値を、Hono側でさらに `SHA-256` でハッシュ化します。
-    - データベースにはこの「二重ハッシュ化」された値が `password_hash` として保存されます。
-    - 万が一データベースが流出しても、生パスワードの復元を極めて困難にします。
-- **セッション管理**: `localStorage` を使用した簡易保持（`user_hash` 等）。
-- **ログインガード**: 未ログインユーザーを `login.html` へ自動リダイレクト。
+1.  **Google OAuth**: 
+    - ユーザーはGoogleアカウントで安全にログイン可能。
+    - サーバー側で取得した情報をもとに内部の `users` テーブルへUpsert処理を行います。
+2.  **JWT + Cookie セッション**:
+    - 認証成功後、サーバーはユーザー情報を含んだ JWT (`auth_token`) を発行します。
+    - トークンは `HttpOnly; Secure; SameSite=Lax` 属性を持つ強固な Cookie としてセットされ、XSSによる抜き取りを防ぎます。
+- **ロールベースアクセス制限 (RBAC)**: 一般ユーザー・管理者(`admin`)の権限管理をミドルウェア（`authMiddleware`, `adminGuard`）で制御しています。
 
-### 🏠 相談者モード（デフォルト）
-- **マイ・ダッシュボード**: 自分の投稿をステータスごとに3カラム（受付中 / 進行中 / 解決済み）で整理して表示。
-- **困りごと投稿**: AIコメント機能を備えた新規課題投稿インターフェース。
-- **詳細閲覧**: 各課題のタイトルをクリックして詳細内容を確認可能。
+### 🏠 コマラボ (相談者モード / 開発者モード)
+- **マイ・ダッシュボード**: 自分の投稿をステータスごとに3カラム（未着手 / 進行中 / 解決済み）で整理して表示。
+- **課題投稿・詳細閲覧**: コンテンツの投稿、詳細画面の閲覧、およびGeminiによる要件定義ログの確認・編集が可能。
+- **着手（挙手）機能**: 開発者が課題に「着手(progress)」し、担当者として名乗り出ることが可能。
+- **パブリック閲覧**: 未ログインユーザーでも、投稿された課題の一覧や詳細は閲覧可能なオープンな仕様です。
 
-### 🛠️ 開発者モード
-- **ワークスペース分離**: 
-  - 上部：「あなたが現在着手中の課題」エリア
-  - 下部：「解決を待っている課題一覧」エリア
-- **着手（挙手）機能**: 未着手の課題に対し、ワンクリックで自分が担当者として着手。
-- **挙手を下ろす（キャンセル）機能**: 担当した課題をキャンセルし、再び「未着手」に戻すことが可能。
+### 🎨 ワクワク試作室 (Ideation / Development)
+- **Ideation (01)**: プロンプトジェネレータ（制約スロット付き）を利用して、AIの力でアプリの初期構想を練る機能。
+- **Development (02)**: ドラフトを保存し、最終的に「AIとの対話ログ」「仕様書」「URL」を付与してプロダクトを封印（公開）します。
+- **Gallery**: 未ログインでも閲覧できる、公開（封印）済みプロダクトのアーカイブ一覧ギャラリー。
+
+### 🛡️ 管理者ダッシュボード
+- **ユーザー管理**: ユーザーの一覧、有効/無効の切り替え、管理者権限の付与・剥奪。
+- **コンテンツ管理**: 全体の統計データ、最近のアクティビティ閲覧。
+- **プロンプト管理**: Wakuwakuの「ベースプロンプト」や「制約スロット」、Komaraboの「要件定義プロンプト」の編集・追加。
 
 ---
 
@@ -51,46 +53,70 @@
 ```mermaid
 erDiagram
     USERS {
-        integer id PK "ID"
-        text user_hash UK "ユーザー識別ハッシュ"
-        text password_hash "二重ハッシュ値 / NULL可"
-        text role "役割 / DEFAULT 'requester'"
-        integer total_score "合計スコア / DEFAULT 0"
-        datetime created_at "作成日時 / DEFAULT CURRENT_TIMESTAMP"
+        text id PK "UUID"
+        text google_sub UK "Googleの一意なID"
+        text email "メールアドレス"
+        text display_name "表示名"
+        text avatar_url "アイコンURL"
+        text role "役割 / DEFAULT 'student'"
+        integer is_active "有効フラグ"
+        boolean is_profile_completed
+        datetime created_at
     }
 
     ISSUES {
-        integer id PK "ID"
-        integer requester_id FK "依頼者ID"
+        integer id PK "課題ID"
+        text requester_id FK "依頼者ID (users.id)"
         text title "困りごと題名"
         text description "詳細内容"
-        text status "ステータス / DEFAULT 'open'"
-        text github_url "GitHub連携URL / NULL可"
-        integer developer_id FK "着手開発者ID / NULL可"
-        datetime created_at "投稿日時 / DEFAULT CURRENT_TIMESTAMP"
-    }
-
-    CERTIFICATES {
-        integer id PK "ID"
-        integer issue_id FK "困りごとID"
-        integer developer_id FK "開発者ID"
-        text verification_key "検証キー / UNIQUE"
-        integer valuation_score "評価数"
+        text status "ステータス (open/progress/closed)"
+        text developer_id FK "担当者ID (users.id)"
+        text requirement_log "要件定義ログ (Gemini等)"
+        datetime created_at
     }
 
     COMMENTS {
-        integer id PK "ID"
-        integer issue_id FK "困りごとID"
-        integer user_id FK "投稿者ID"
-        text content "コメント内容"
-        datetime created_at "投稿日時 / DEFAULT CURRENT_TIMESTAMP"
+        integer id PK "コメントID"
+        integer issue_id FK "課題ID (issues.id)"
+        text user_id FK "投稿者ID (users.id)"
+        text content "内容"
+        datetime created_at
     }
 
-    USERS ||--o{ ISSUES : "作成"
-    ISSUES ||--o| CERTIFICATES : "証明"
-    USERS ||--o{ CERTIFICATES : "獲得"
-    ISSUES ||--o{ COMMENTS : "紐付き"
-    USERS ||--o{ COMMENTS : "記入"
+    PRODUCTS {
+        integer id PK "プロダクトID"
+        text creator_id FK "作成者ID (users.id)"
+        text title "製品名"
+        text url "製品URL"
+        text status "ステータス (draft/published)"
+        text catch_copy "キャッチコピー"
+        text protocol_log "仕様書"
+        text dialogue_log "対話ログ"
+        datetime sealed_at "封印日時"
+    }
+
+    SITE_CONFIGS {
+        text key PK
+        text value
+        text description
+    }
+
+    BASE_PROMPTS {
+        integer id PK
+        text label
+        text prompt
+    }
+
+    SLOT_CONSTRAINTS {
+        integer id PK
+        text category
+        text content
+    }
+
+    USERS ||--o{ ISSUES : "投稿/着手"
+    ISSUES ||--o{ COMMENTS : "紐付け"
+    USERS ||--o{ COMMENTS : "発言"
+    USERS ||--o{ PRODUCTS : "作成"
 ```
 
 ---
@@ -101,60 +127,43 @@ erDiagram
 classDiagram
     direction LR
     
-    class Browser_Frontend ["ブラウザ（画面）"] {
-        <<HTML/JS/Tailwind>>
-        +fetchIssues() 一覧取得・描画
-        +postIssue() 課題投稿
-        +switchMode(mode) モード切替
-        +takeIssue(id) 着手アクション
-        +unassignIssue(id) キャンセル
+    class Browser_Frontend ["フロントエンド (Public)"] {
+        <<HTML/Vanilla JS>>
+        +checkAuth() JWTセッション検証
+        +apiRequest() Cookie付きFetch
     }
 
-    class Hono_API_Handler ["APIサーバー（Hono）"] {
+    class Hono_API_Handler ["API エンドポイント (Hono)"] {
         <<Cloudflare Pages Functions>>
-        +POST /login 認証
-        +GET /list-issues フィルタリング取得
-        +POST /post-issue 新規投稿
-        +POST /update-issue-status ステータス/着手更新
-        +POST /unassign-issue 挙手解除
+        +app.route('/auth')
+        +app.route('/issues')
+        +app.route('/wakuwaku')
+        +app.route('/admin')
     }
 
-    class Gemini_API ["Gemini API"] {
-        +generateContent(prompt) 共感性生成
+    class D1_Database ["バックエンドデータベース (D1)"] {
+        +users
+        +issues, comments
+        +products
+        +site_configs, base_prompts
     }
 
-    class D1_Database ["データベース（D1）"] {
-        +prepare / bind / execute
-    }
-
-    Browser_Frontend --> Hono_API_Handler : JSON
-    Browser_Frontend --> Gemini_API : SDK利用
-    Hono_API_Handler --> D1_Database : SQL
+    Browser_Frontend --> Hono_API_Handler : JSON (w/ JWT Cookie)
+    Hono_API_Handler --> D1_Database : SQL (Bind Params)
 ```
 
 ---
 
-## 5. API エンドポイント仕様（主要）
+## 5. API エンドポイント仕様（概要）
 
-| メソッド | パス | 説明 | 主なパラメータ |
+主要なルーティング構成（`[[route]].ts` より）：
+
+| 分類 | パス | 認証・権限 | 説明 |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/login` | ログイン / 新規登録 | `user_hash`, `password` |
-| `GET` | `/api/list-issues` | 課題一覧取得（全件 / 自分） | `filter`, `user_hash` |
-| `POST` | `/api/post-issue` | 新しい困りごとの投稿 | `title`, `description`, `user_hash` |
-| `POST` | `/api/update-issue-status` | 着手（挙手）またはステータス変更 | `id`, `status`, `user_hash` |
-| `POST` | `/api/unassign-issue` | 着手のキャンセル（挙手を下ろす） | `id` |
-
----
-
-## 6. 今後の課題 / 未実装機能
-- [ ] 解決証明 (`certificates`) の発行・承認フローの実装
-- [ ] コメント (`comments`) の投稿・表示機能の実装
-- [ ] 管理者向けダッシュボード（全ユーザー・全課題の管理）
-- [ ] パスワード再設定・ニックネーム変更などのプロフィール管理
-
----
-
-## 7. セキュリティ・サニタイズ計画（最優先次工程）
-- [ ] クライアントサイドでの入力値のバリデーション（空文字・文字数制限）
-- [ ] 表示時における HTML エスケープ処理（XSS対策）
-- [ ] API 側での認証トークンの厳密な検証（なりすまし・改ざん防止）
+| **Auth** | `/api/auth/google` | Public | Google OAuth リダイレクト開始 |
+| **Auth** | `/api/auth/callback` | Public | OAuth コールバック・JWT発行設定 |
+| **Issues** | `/api/issues/list` | Public | 課題一覧取得 |
+| **Issues** | `/api/issues/update-status` | ログイン必須 | 課題の着手・クローズ |
+| **Waku** | `/api/wakuwaku/products` | Public | 封印済み試作品アーカイブ一覧 |
+| **Waku** | `/api/wakuwaku/seal` | ログイン必須 | 試作品の封印（提出） |
+| **Admin** | `/api/admin/*` | JWT + 👑Admin | サイト統計、ユーザー管理、プロンプト編集 |

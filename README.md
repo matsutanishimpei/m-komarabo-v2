@@ -42,19 +42,19 @@ Cloudflare Pages と D1 データベース、Hono フレームワークを使用
 このプロジェクトでは、Cloudflare Pages の **Functions** 機能を活用しており、Hono を使用した高度なルーティングを行っています。
 
 ### `[[route]].ts` (Catch-all Route)
-ファイル名を `[[route]].ts` とすることで、`/api/` 以下のすべてのサブパス（例: `/api/list-issues`, `/api/post-issue` など）がこの一つのファイルに集約されます。
+ファイル名を `[[route]].ts` とすることで、`/api/` 以下のすべてのサブパス（例: `/api/issues/list`, `/api/issues/post` など）がこの一つのファイルに集約されます。
 
 ```typescript
 // functions/api/[[route]].ts
 const app = new Hono().basePath('/api')
 
-app.get('/list-issues', ...) // /api/list-issues に対応
-app.post('/post-issue', ...) // /api/post-issue に対応
+app.route('/issues', issues) // /api/issues/list や /api/issues/post などに対応
+app.route('/wakuwaku', wakuwaku) // /api/wakuwaku/... に対応
 
 export const onRequest = handle(app)
 ```
 
-この構成により、フロントエンド側は `/api/list-issues` という簡潔なURLでバックエンドを呼び出すことが可能です。
+この構成により、フロントエンド側は `/api/issues/list` という簡潔なURLでバックエンドを整理された形で呼び出すことが可能です。
 
 ---
 

@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { Bindings, Variables } from './types';
+import { getTokenFromCookie, verifyJwt } from './helpers';
 
 const issues = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -21,7 +22,22 @@ issues.get('/requirement-prompt', async (c) => {
 issues.get('/list', async (c) => {
     try {
         const filter = c.req.query('filter') || 'all';
-        const user = c.get('user');
+
+        let user: any = c.get('user'); // if authMiddleware was applied
+        if (!user) {
+            const token = getTokenFromCookie(c);
+            if (token) {
+                const payload = await verifyJwt(c.env.JWT_SECRET, token);
+                if (payload) {
+                    user = {
+                        id: payload.id,
+                        display_name: payload.display_name,
+                        role: payload.role,
+                        sub: payload.sub,
+                    };
+                }
+            }
+        }
 
         let query = `
             SELECT 
@@ -65,12 +81,32 @@ issues.post('/update-status', async (c) => {
             return c.json({ success: false, message: '無効なステータスです' }, 400);
         }
 
-        // 着手時は developer_id も更新
+        const issue = await c.env.DB.prepare(
+            'SELECT requester_id, developer_id, status FROM issues WHERE id = ?'
+        ).bind(id).first<{ requester_id: string; developer_id: string | null; status: string }>();
+
+        if (!issue) {
+            return c.json({ success: false, message: '課題が見つかりません' }, 404);
+        }
+
         if (status === 'progress') {
+            // すでに着手済みの場合はエラー（横取り防止）
+            if (issue.status !== 'open' || issue.developer_id !== null) {
+                return c.json({ success: false, message: 'この課題は既に着手されています' }, 400);
+            }
             await c.env.DB.prepare(
                 'UPDATE issues SET status = ?, developer_id = ? WHERE id = ?'
             ).bind(status, user.id, id).run();
+        } else if (status === 'closed') {
+            // 解決承認は相談者本人のみ
+            if (issue.requester_id !== user.id) {
+                return c.json({ success: false, message: '解決承認は相談者本人のみが行えます' }, 403);
+            }
+            await c.env.DB.prepare(
+                'UPDATE issues SET status = ? WHERE id = ?'
+            ).bind(status, id).run();
         } else {
+            // openなどその他のステータス
             await c.env.DB.prepare(
                 'UPDATE issues SET status = ? WHERE id = ?'
             ).bind(status, id).run();
@@ -120,6 +156,23 @@ issues.get('/detail', async (c) => {
         if (!idQuery) return c.json({ message: 'IDが指定されていません' }, 400);
 
         const id = idQuery;
+
+        // ログイン状態の手動解決 (Public API用)
+        let user: any = c.get('user');
+        if (!user) {
+            const token = getTokenFromCookie(c);
+            if (token) {
+                const payload = await verifyJwt(c.env.JWT_SECRET, token);
+                if (payload) {
+                    user = {
+                        id: payload.id,
+                        display_name: payload.display_name,
+                        role: payload.role,
+                        sub: payload.sub,
+                    };
+                }
+            }
+        }
 
         // 1. 課題本体を取得
         const issue = await c.env.DB.prepare(`
