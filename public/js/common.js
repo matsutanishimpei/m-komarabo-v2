@@ -245,11 +245,15 @@ export async function apiRequest(endpoint, options = {}) {
  * @param {Object} body - リクエストボディ
  * @returns {Promise<Object>}
  */
-export async function adminApiRequest(endpoint, body = {}) {
-    return apiRequest(endpoint, {
-        method: 'POST',
-        body: JSON.stringify(body)
-    });
+export async function adminApiRequest(endpoint, body = null) {
+    const options = {};
+    if (body) {
+        options.method = 'POST';
+        options.body = JSON.stringify(body);
+    } else {
+        options.method = 'GET';
+    }
+    return apiRequest(endpoint, options);
 }
 
 // ========================================
