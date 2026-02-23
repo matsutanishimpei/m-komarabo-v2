@@ -239,6 +239,26 @@ admin.post('/base-prompts/delete', async (c) => {
     }
 });
 
+admin.post('/base-prompts/import', async (c) => {
+    try {
+        const prompts = await c.req.json() as any[];
+        if (!Array.isArray(prompts)) {
+            return c.json({ success: false, message: '配列形式のデータが必要です' }, 400);
+        }
+        const stmts = [c.env.DB.prepare('DELETE FROM base_prompts')];
+        for (const p of prompts) {
+            if (p.label && p.prompt) {
+                stmts.push(c.env.DB.prepare('INSERT INTO base_prompts (label, prompt) VALUES (?, ?)').bind(p.label, p.prompt));
+            }
+        }
+        await c.env.DB.batch(stmts);
+        return c.json({ success: true, message: 'ベースプロンプトをインポートしました' });
+    } catch (err) {
+        console.error('[admin/base-prompts/import] インポートエラー:', err);
+        return c.json({ success: false, message: 'インポートに失敗しました' }, 500);
+    }
+});
+
 // ========================================
 // 要件定義プロンプト更新 API (コマラボ)
 // ========================================
@@ -293,6 +313,26 @@ admin.post('/constraints/delete', async (c) => {
     } catch (err) {
         console.error('[admin/constraints/delete] 削除エラー:', err);
         return c.json({ error: '制約の削除に失敗しました' }, 500);
+    }
+});
+
+admin.post('/constraints/import', async (c) => {
+    try {
+        const constraints = await c.req.json() as any[];
+        if (!Array.isArray(constraints)) {
+            return c.json({ success: false, message: '配列形式のデータが必要です' }, 400);
+        }
+        const stmts = [c.env.DB.prepare('DELETE FROM slot_constraints')];
+        for (const item of constraints) {
+            if (item.category && item.content) {
+                stmts.push(c.env.DB.prepare('INSERT INTO slot_constraints (category, content) VALUES (?, ?)').bind(item.category, item.content));
+            }
+        }
+        await c.env.DB.batch(stmts);
+        return c.json({ success: true, message: '制約スロットをインポートしました' });
+    } catch (err) {
+        console.error('[admin/constraints/import] インポートエラー:', err);
+        return c.json({ success: false, message: 'インポートに失敗しました' }, 500);
     }
 });
 
