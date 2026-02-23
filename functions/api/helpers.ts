@@ -139,34 +139,3 @@ export async function adminGuard(
 
     await next();
 }
-
-// ========================================
-// レガシー互換ヘルパー（移行期間用）
-// ========================================
-
-/**
- * user_hash からユーザーIDを取得（後方互換）
- * @deprecated 移行完了後に削除
- */
-export async function getUserByHash(
-    c: Context<{ Bindings: Bindings }>,
-    user_hash: string
-): Promise<{ id: string; role: string } | null> {
-    return c.env.DB.prepare(
-        'SELECT id, role FROM users WHERE display_name = ?'
-    ).bind(user_hash).first<{ id: string; role: string }>();
-}
-
-/**
- * 管理者権限を検証（後方互換）
- * @deprecated 移行完了後に削除。代わりに adminGuard ミドルウェアを使用
- */
-export async function verifyAdmin(
-    c: Context<{ Bindings: Bindings }>,
-    user_hash: string
-): Promise<boolean> {
-    const user = await c.env.DB.prepare(
-        "SELECT role FROM users WHERE display_name = ?"
-    ).bind(user_hash).first<{ role: string }>();
-    return !!(user && user.role === 'admin');
-}
