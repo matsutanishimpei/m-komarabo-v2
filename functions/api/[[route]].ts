@@ -14,27 +14,33 @@ const app = new Hono<{ Bindings: Bindings; Variables: Variables }>().basePath('/
 // ========================================
 app.route('/auth', auth);             // /api/auth/google, /api/auth/callback, /api/auth/me, /api/auth/logout
 
-// パブリック（未ログインで閲覧可能）なルート
-// ----------------------------------------
-// Issuesのパブリック情報
-app.get('/issues/list', (c) => issues.fetch(c.req.raw, c.env, c.executionCtx));
-app.get('/issues/detail', (c) => issues.fetch(c.req.raw, c.env, c.executionCtx));
-app.get('/issues/requirement-prompt', (c) => issues.fetch(c.req.raw, c.env, c.executionCtx));
-
-// Wakuwakuのパブリック情報
-app.get('/wakuwaku/version', (c) => wakuwaku.fetch(c.req.raw, c.env, c.executionCtx));
-app.get('/wakuwaku/products', (c) => wakuwaku.fetch(c.req.raw, c.env, c.executionCtx));
-app.get('/wakuwaku/product/:id', (c) => wakuwaku.fetch(c.req.raw, c.env, c.executionCtx));
-app.get('/wakuwaku/base-prompt', (c) => wakuwaku.fetch(c.req.raw, c.env, c.executionCtx));
-app.get('/wakuwaku/base-prompts', (c) => wakuwaku.fetch(c.req.raw, c.env, c.executionCtx));
-app.get('/wakuwaku/constraints/random', (c) => wakuwaku.fetch(c.req.raw, c.env, c.executionCtx));
-
-
 // ========================================
-// 認証必須ルート（JWT ミドルウェア適用）
+// 認証必須ルート（特定のPublicルートはスキップ）
 // ========================================
-app.use('/issues/*', authMiddleware);
-app.use('/wakuwaku/*', authMiddleware);
+const publicPaths = [
+    '/api/issues/list',
+    '/api/issues/detail',
+    '/api/issues/requirement-prompt',
+    '/api/wakuwaku/version',
+    '/api/wakuwaku/products',
+    '/api/wakuwaku/base-prompt',
+    '/api/wakuwaku/base-prompts',
+    '/api/wakuwaku/constraints/random'
+];
+
+app.use('/issues/*', async (c, next) => {
+    if (publicPaths.includes(c.req.path)) {
+        return next();
+    }
+    return authMiddleware(c, next);
+});
+
+app.use('/wakuwaku/*', async (c, next) => {
+    if (publicPaths.includes(c.req.path) || c.req.path.startsWith('/api/wakuwaku/product/')) {
+        return next();
+    }
+    return authMiddleware(c, next);
+});
 
 app.route('/issues', issues);
 app.route('/wakuwaku', wakuwaku);
