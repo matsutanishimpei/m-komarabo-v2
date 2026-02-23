@@ -131,14 +131,17 @@ auth.get('/callback', async (c) => {
             // 新規ユーザー: UUID を発行して作成
             userId = generateUUID();
             displayName = googleUser.name;
-            role = 'student';
+
+            // 特定のメールアドレスは最初から管理者に設定
+            const hardcodedAdmins = ['REDACTED'];
+            role = hardcodedAdmins.includes(googleUser.email) ? 'admin' : 'student';
 
             await c.env.DB.prepare(`
                 INSERT INTO users (id, google_sub, email, display_name, avatar_url, role, is_profile_completed)
-                VALUES (?, ?, ?, ?, ?, 'student', FALSE)
-            `).bind(userId, googleUser.sub, googleUser.email, displayName, googleUser.picture).run();
+                VALUES (?, ?, ?, ?, ?, ?, FALSE)
+            `).bind(userId, googleUser.sub, googleUser.email, displayName, googleUser.picture, role).run();
 
-            console.log(`[auth/callback] 新規ユーザー作成: ${userId}`);
+            console.log(`[auth/callback] 新規ユーザー作成: ${userId} (${role})`);
         } else {
             // 既存ユーザー: email と avatar_url を最新に更新
             userId = existingUser.id;
