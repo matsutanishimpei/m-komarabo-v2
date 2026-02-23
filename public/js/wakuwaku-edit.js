@@ -1,0 +1,169 @@
+import { injectWakuwakuBackground } from '../js/theme.js';
+injectWakuwakuBackground();
+
+import { checkAuth, apiRequest, validateRequired, formatDateTime, showError, escapeHtml } from '../js/common.js';
+
+let currentUser = null;
+
+const urlParams = new URLSearchParams(window.location.search);
+const productId = urlParams.get('id');
+
+async function initPage() {
+    currentUser = await checkAuth(true, 'wakuwaku');
+    await loadProduct();
+}
+
+async function loadProduct() {
+    if (!productId) {
+        showError('editForm', 'プロダクトIDが指定されていません');
+        return;
+    }
+
+    try {
+        const product = await apiRequest(`/api/wakuwaku/product/${productId}`);
+
+        // 投稿者本人確認（creator_user_id をサーバーから取得して比較）
+        if (product.creator_user_id !== currentUser.id) {
+            showError('editForm', '自分の投稿のみ編集できます');
+            return;
+        }
+
+        renderEditForm(product);
+    } catch (err) {
+        console.error(err);
+        showError('editForm', err.message || 'プロダクトの読み込みに失敗しました');
+    }
+}
+
+function renderEditForm(product) {
+    const sealedDate = new Date(product.sealed_at);
+
+    document.getElementById('editForm').innerHTML = `
+            <!-- 編集可能な項目 -->
+            <div class="space-y-6 mb-10">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">
+                        アプリ名<span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" id="title" value="${escapeHtml(product.title)}"
+                        class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">
+                        URL（任意）
+                    </label>
+                    <input type="url" id="url" value="${escapeHtml(product.url || '')}"
+                        class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">
+                        こだわりポイント
+                    </label>
+                    <textarea id="devObsession" rows="8"
+                        class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition">${escapeHtml(product.dev_obsession || '')}</textarea>
+                </div>
+            </div>
+
+            <!-- 封印された初期衝動（表示のみ） -->
+            <div class="mb-10">
+                <div class="flex items-center gap-3 mb-4">
+                    <h3 class="text-xl font-semibold text-white">初期衝動（封印済・編集不可）</h3>
+                    <span class="px-3 py-1 bg-red-500/10 text-red-400 text-xs font-medium rounded-md border border-red-500/20">
+                        🔒 編集不可
+                    </span>
+                </div>
+                <div class="bg-slate-900/50 border border-red-500/30 rounded-xl p-6">
+                    <div class="text-xs text-red-300 mb-4">
+                        ${formatDateTime(sealedDate)}に封印
+                    </div>
+                    <pre class="text-sm text-slate-400 whitespace-pre-wrap leading-relaxed font-mono">${escapeHtml(product.initial_prompt_log)}</pre>
+                </div>
+            </div>
+
+            <!-- 更新ボタン -->
+            <div class="flex gap-4 mb-4">
+                <button onclick="updateProduct()" class="flex-1 px-8 py-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl transition">
+                    更新する
+                </button>
+                <a href="detail.html?id=${product.id}" class="flex-1 px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition text-center">
+                    キャンセル
+                </a>
+            </div>
+
+            <!-- 削除ボタン -->
+            <div class="border-t border-slate-700 pt-6">
+                <button onclick="deleteProduct()" class="w-full px-8 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium rounded-xl transition border border-red-500/30 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    この作品を削除
+                </button>
+                <p class="text-xs text-slate-500 text-center mt-2">⚠️ 削除すると復元できません</p>
+            </div>
+            `;
+}
+
+async function updateProduct() {
+    const title = document.getElementById('title').value.trim();
+    const url = document.getElementById('url').value.trim();
+    const devObsession = document.getElementById('devObsession').value.trim();
+
+    if (!validateRequired(title, 'アプリ名')) {
+        return;
+    }
+
+    try {
+        const data = await apiRequest('/api/wakuwaku/update-product', {
+            method: 'POST',
+            body: JSON.stringify({
+                id: productId,
+                title,
+                url: url || null,
+                dev_obsession: devObsession || null
+            })
+        });
+
+        if (data.success) {
+            alert('更新しました！');
+            location.href = `detail.html?id=${productId}`;
+        } else {
+            alert('エラー: ' + (data.message || 'サーバーエラーが発生しました'));
+        }
+    } catch (err) {
+        console.error('更新エラー:', err);
+        alert('更新に失敗しました\n\n詳細: ' + err.message);
+    }
+}
+window.updateProduct = updateProduct;
+
+async function deleteProduct() {
+    if (!confirm('本当にこの作品を削除しますか？\n\n削除すると復元できません。')) {
+        return;
+    }
+
+    if (!confirm('最終確認：本当に削除しますか？')) {
+        return;
+    }
+
+    try {
+        const data = await apiRequest('/api/wakuwaku/delete-product', {
+            method: 'POST',
+            body: JSON.stringify({ id: productId })
+        });
+
+        if (data.success) {
+            alert('作品を削除しました');
+            location.href = 'index.html';
+        } else {
+            alert('エラー: ' + (data.message || 'サーバーエラーが発生しました'));
+        }
+    } catch (err) {
+        console.error('削除エラー:', err);
+        alert('削除に失敗しました\n\n詳細: ' + err.message);
+    }
+}
+window.deleteProduct = deleteProduct;
+
+initPage();
