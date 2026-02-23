@@ -241,7 +241,6 @@ export async function apiRequest(endpoint, options = {}) {
 
 /**
  * 管理者専用APIリクエスト
- * Cookie認証なので user_hash 不要
  * @param {string} endpoint - APIエンドポイント
  * @param {Object} body - リクエストボディ
  * @returns {Promise<Object>}
