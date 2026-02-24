@@ -4,6 +4,7 @@ export type Bindings = {
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   GOOGLE_REDIRECT_URI: string;
+  ADMIN_EMAILS: string;  // カンマ区切りの管理者メールアドレス一覧
 };
 
 // JWTペイロードの型定義

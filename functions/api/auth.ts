@@ -132,9 +132,13 @@ auth.get('/callback', async (c) => {
             userId = generateUUID();
             displayName = googleUser.name;
 
-            // 特定のメールアドレスは最初から管理者に設定
-            const hardcodedAdmins = ['REDACTED'];
-            role = hardcodedAdmins.includes(googleUser.email) ? 'admin' : 'student';
+            // 管理者メールは環境変数（Cloudflare Secret）から取得
+            // ADMIN_EMAILS にカンマ区切りで設定: "a@example.com,b@example.com"
+            const adminEmails = (c.env.ADMIN_EMAILS || '')
+                .split(',')
+                .map((e: string) => e.trim().toLowerCase())
+                .filter((e: string) => e.length > 0);
+            role = adminEmails.includes(googleUser.email.toLowerCase()) ? 'admin' : 'student';
 
             await c.env.DB.prepare(`
                 INSERT INTO users (id, google_sub, email, display_name, avatar_url, role, is_profile_completed)

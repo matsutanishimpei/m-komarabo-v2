@@ -14,7 +14,11 @@ database_id = "d3ad4a59-fad0-482f-a1f1-8a6d95f026e3"
 #   npx wrangler pages secret put GOOGLE_CLIENT_ID
 #   npx wrangler pages secret put GOOGLE_CLIENT_SECRET
 #   npx wrangler pages secret put GOOGLE_REDIRECT_URI
+#   npx wrangler pages secret put ADMIN_EMAILS
 #
 # GOOGLE_REDIRECT_URI の例:
 #   https://your-domain.pages.dev/api/auth/callback
+#
+# ADMIN_EMAILS の例 (カンマ区切りで複数設定可能):
+#   REDACTED,other-admin@example.com
 # ========================================
