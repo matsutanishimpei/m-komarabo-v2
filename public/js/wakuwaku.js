@@ -194,20 +194,41 @@ async function loadDrafts() {
             return;
         }
 
-        container.innerHTML = drafts.map(d => {
-            const json = JSON.stringify(d).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
-            return `
-            <div onclick='window.selectDraft(${json})' 
-                 class="p-3 bg-slate-900 rounded-xl cursor-pointer hover:bg-slate-800 transition border border-transparent hover:border-slate-700 group flex items-center justify-between">
-                <div class="flex-1 min-w-0 pr-2">
+        // data-*属性経由で安全にデータを参照する（JSON直接埋め込みを排除）
+        const draftMap = new Map(drafts.map(d => [String(d.id), d]));
+
+        container.innerHTML = drafts.map(d => `
+            <div data-draft-id="${d.id}"
+                 class="draft-item p-3 bg-slate-900 rounded-xl cursor-pointer hover:bg-slate-800 transition border border-transparent hover:border-slate-700 group flex items-center justify-between">
+                <div class="flex-1 min-w-0 pr-2 pointer-events-none">
                    <h4 class="font-bold text-slate-300 text-sm truncate group-hover:text-white">${escapeHtml(d.title)}</h4>
                    <p class="text-[10px] text-slate-500 mt-1">${new Date(d.created_at).toLocaleDateString()}</p>
                 </div>
-                <button onclick="event.stopPropagation(); window.confirmDeleteDraft(${d.id})" class="p-1.5 rounded-lg hover:bg-slate-700 text-slate-600 hover:text-red-400 transition" title="下書きを削除">
+                <button data-delete-id="${d.id}" class="draft-delete-btn p-1.5 rounded-lg hover:bg-slate-700 text-slate-600 hover:text-red-400 transition" title="下書きを削除">
                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
             </div>
-        `}).join('');
+        `).join('');
+
+        // イベントリスナーでデータを安全に取得
+        container.querySelectorAll('.draft-item').forEach(el => {
+            el.addEventListener('click', (e) => {
+                // 削除ボタンのクリックは無視
+                if (e.target.closest('.draft-delete-btn')) return;
+                const id = el.dataset.draftId;
+                const draft = draftMap.get(id);
+                if (draft) window.selectDraft(draft);
+            });
+        });
+
+        container.querySelectorAll('.draft-delete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = Number(btn.dataset.deleteId);
+                if (id) window.confirmDeleteDraft(id);
+            });
+        });
+
     } catch (e) { console.error(e); }
 }
 
