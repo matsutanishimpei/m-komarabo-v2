@@ -1,37 +1,37 @@
 import { escapeHtml, fetchAuthUser, apiRequest } from '../js/common.js';
-        import { injectWakuwakuBackground } from '../js/theme.js';
-        injectWakuwakuBackground();
+import { injectWakuwakuBackground } from '../js/theme.js';
+injectWakuwakuBackground();
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const productId = urlParams.get('id');
+const urlParams = new URLSearchParams(window.location.search);
+const productId = urlParams.get('id');
 
-        let currentUser = null;
+let currentUser = null;
 
-        async function loadProduct() {
-            // 認証は任意（ログインしてなくても詳細は見れる想定）
-            currentUser = await fetchAuthUser();
+async function loadProduct() {
+    // 認証は任意（ログインしてなくても詳細は見れる想定）
+    currentUser = await fetchAuthUser();
 
-            if (!productId) {
-                document.getElementById('productDetail').innerHTML = `
+    if (!productId) {
+        document.getElementById('productDetail').innerHTML = `
                     <div class="text-center py-20">
                         <p class="text-slate-400">プロダクトIDが指定されていません</p>
                     </div>
                 `;
-                return;
-            }
+        return;
+    }
 
-            try {
-                const product = await apiRequest(`/api/wakuwaku/product/${productId}`);
+    try {
+        const product = await apiRequest(`/api/wakuwaku/product/${productId}`);
 
-                const sealedDate = new Date(product.sealed_at || product.created_at);
-                const isOwner = currentUser && product.creator_user_id === currentUser.id;
+        const sealedDate = new Date(product.sealed_at || product.created_at);
+        const isOwner = currentUser && product.creator_user_id === currentUser.id;
 
-                const protocol = product.protocol_log || product.initial_prompt_log || 'No protocol data';
-                const dialogue = product.dialogue_log;
-                const catchCopy = product.catch_copy;
-                const creatorName = product.creator_name || 'Unknown';
+        const protocol = product.protocol_log || product.initial_prompt_log || 'No protocol data';
+        const dialogue = product.dialogue_log;
+        const catchCopy = product.catch_copy;
+        const creatorName = product.creator_name || 'Unknown';
 
-                document.getElementById('productDetail').innerHTML = `
+        document.getElementById('productDetail').innerHTML = `
                     <!-- Product Header -->
                     <div class="mb-10">
                         <div class="flex items-start justify-between mb-4">
@@ -98,14 +98,15 @@ import { escapeHtml, fetchAuthUser, apiRequest } from '../js/common.js';
                         </div>
                     ` : ''}
                 `;
-            } catch (err) {
-                console.error(err);
-                document.getElementById('productDetail').innerHTML = `
+    } catch (err) {
+        console.error(err);
+        const safeMessage = escapeHtml(err.message || 'プロダクトの読み込みに失敗しました');
+        document.getElementById('productDetail').innerHTML = `
                     <div class="text-center py-20">
-                        <p class="text-red-400">${err.message || 'プロダクトの読み込みに失敗しました'}</p>
+                        <p class="text-red-400">${safeMessage}</p>
                     </div>
                 `;
-            }
-        }
+    }
+}
 
-        loadProduct();
+loadProduct();
