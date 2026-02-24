@@ -56,11 +56,12 @@ wakuwaku.post('/drafts', async (c) => {
     try {
         const user = c.get('user');
         const { title } = await c.req.json();
-        if (!title) return c.json({ success: false, message: 'タイトルは必須です' }, 400);
+        if (!title || !title.trim()) return c.json({ success: false, message: 'タイトルは必須です' }, 400);
+        if (title.length > 200) return c.json({ success: false, message: 'タイトルは200文字以内で入力してください' }, 400);
 
         const res = await c.env.DB.prepare(
             "INSERT INTO products (creator_id, title, status) VALUES (?, ?, 'draft')"
-        ).bind(user.id, title).run();
+        ).bind(user.id, title.trim()).run();
 
         return c.json({ success: true, id: res.meta.last_row_id });
     } catch (err) {
@@ -98,6 +99,13 @@ wakuwaku.post('/drafts/save', async (c) => {
         if (isNaN(productId)) {
             return c.json({ success: false, message: 'IDが無効です' }, 400);
         }
+
+        // 文字数上限バリデーション
+        if (url && url.length > 2048) return c.json({ success: false, message: 'URLは2048文字以内で入力してください' }, 400);
+        if (dev_obsession && dev_obsession.length > 5000) return c.json({ success: false, message: 'こだわりは5000文字以内で入力してください' }, 400);
+        if (protocol_log && protocol_log.length > 100000) return c.json({ success: false, message: '仕様書は100000文字以内にしてください' }, 400);
+        if (dialogue_log && dialogue_log.length > 100000) return c.json({ success: false, message: '対話ログは100000文字以内にしてください' }, 400);
+        if (catch_copy && catch_copy.length > 200) return c.json({ success: false, message: 'キャッチコピーは200文字以内で入力してください' }, 400);
 
         // 権限確認（creator_id で直接確認）
         const product = await c.env.DB.prepare(

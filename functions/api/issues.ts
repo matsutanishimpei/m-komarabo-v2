@@ -215,10 +215,13 @@ issues.post('/comment', async (c) => {
         if (!content || !content.trim()) {
             return c.json({ success: false, message: 'コメント内容を入力してください' }, 400);
         }
+        if (content.length > 2000) {
+            return c.json({ success: false, message: 'コメントは2000文字以内で入力してください' }, 400);
+        }
 
         await c.env.DB.prepare(
             'INSERT INTO comments (issue_id, user_id, content) VALUES (?, ?, ?)'
-        ).bind(issue_id, user.id, content).run();
+        ).bind(issue_id, user.id, content.trim()).run();
 
         return c.json({ success: true, message: 'コメントを投稿しました' });
     } catch (err) {
@@ -269,6 +272,10 @@ issues.post('/update-requirement', async (c) => {
         const user = c.get('user');
         const { id, requirement_log } = await c.req.json();
 
+        if (requirement_log && requirement_log.length > 50000) {
+            return c.json({ success: false, message: '要件定義ログは50000文字以内にしてください' }, 400);
+        }
+
         // 権限確認（相談者 または 担当開発者）
         const issue = await c.env.DB.prepare(
             'SELECT requester_id, developer_id FROM issues WHERE id = ?'
@@ -302,13 +309,19 @@ issues.post('/post', async (c) => {
         if (!title || !title.trim()) {
             return c.json({ success: false, message: 'タイトルを入力してください' }, 400);
         }
+        if (title.length > 200) {
+            return c.json({ success: false, message: 'タイトルは200文字以内で入力してください' }, 400);
+        }
         if (!description || !description.trim()) {
             return c.json({ success: false, message: '説明を入力してください' }, 400);
+        }
+        if (description.length > 10000) {
+            return c.json({ success: false, message: '説明は10000文字以内で入力してください' }, 400);
         }
 
         await c.env.DB.prepare(
             'INSERT INTO issues (requester_id, title, description) VALUES (?, ?, ?)'
-        ).bind(user.id, title, description).run();
+        ).bind(user.id, title.trim(), description.trim()).run();
 
         return c.json({ success: true, message: '投稿完了しました！' });
     } catch (err) {
