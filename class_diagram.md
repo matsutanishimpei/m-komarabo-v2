@@ -36,7 +36,7 @@ classDiagram
         +String email
         +String display_name 表示名
         +String avatar_url アイコン
-        +String role (student/admin)
+        +String role (user/admin)
         +Bool is_active
     }
 

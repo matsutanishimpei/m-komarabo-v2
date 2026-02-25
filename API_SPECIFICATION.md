@@ -200,7 +200,7 @@ D1データベースからの全体統計（総ユーザー数、課題数、作
 ユーザー一覧を取得。
 
 ### `POST /api/admin/users/toggle-role`
-指定ユーザーの権限（`admin` / `student`）をトグル（切り替え）します。
+指定ユーザーの権限（`admin` / `user`）をトグル（切り替え）します。
 ```json
 { "target_user_id": "uuid-xxx" }
 ```

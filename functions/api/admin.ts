@@ -81,7 +81,7 @@ admin.post('/users/toggle-role', async (c) => {
             return c.json({ success: false, message: 'ユーザーが見つかりません' }, 404);
         }
 
-        const newRole = target.role === 'admin' ? 'student' : 'admin';
+        const newRole = target.role === 'admin' ? 'user' : 'admin';
         await c.env.DB.prepare(
             'UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
         ).bind(newRole, target_user_id).run();

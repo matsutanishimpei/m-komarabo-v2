@@ -12,7 +12,7 @@ export type JwtPayload = {
   sub: string;          // Google sub (内部のみ)
   id: string;           // 内部UUID
   display_name: string; // 表示名
-  role: string;         // admin/student
+  role: string;         // admin/user
   iat: number;
   exp: number;
 };

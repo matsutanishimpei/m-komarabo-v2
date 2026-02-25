@@ -21,7 +21,7 @@ CREATE TABLE users (
   email TEXT NOT NULL,
   display_name TEXT NOT NULL,
   avatar_url TEXT,
-  role TEXT DEFAULT 'student',
+  role TEXT DEFAULT 'user',
   is_active INTEGER DEFAULT 1,
   is_profile_completed BOOLEAN DEFAULT FALSE,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -154,8 +154,8 @@ INSERT INTO slot_constraints (category, content) VALUES
 -- パスワードなどのハッシュを含まないGoogle認証向けダミーユーザー
 INSERT INTO users (id, google_sub, email, display_name, avatar_url, role, is_active, is_profile_completed) VALUES
 ('sample-admin-uuid-001', 'google-oauth-sub-demo-001', 'admin@example.com', '管理者 (Admin)', '', 'admin', 1, 1),
-('sample-user-uuid-002', 'google-oauth-sub-demo-002', 'user@example.com', 'サンプルの非IT市民', '', 'student', 1, 1),
-('sample-dev-uuid-003', 'google-oauth-sub-demo-003', 'dev@example.com', 'サンプル開発者', '', 'student', 1, 1);
+('sample-user-uuid-002', 'google-oauth-sub-demo-002', 'user@example.com', 'サンプルの非IT市民', '', 'user', 1, 1),
+('sample-dev-uuid-003', 'google-oauth-sub-demo-003', 'dev@example.com', 'サンプル開発者', '', 'user', 1, 1);
 
 -- 5. サンプル課題の投入
 INSERT INTO issues (requester_id, title, description, status, requirement_log) VALUES

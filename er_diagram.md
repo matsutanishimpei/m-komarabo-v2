@@ -6,7 +6,7 @@ erDiagram
         text email "メールアドレス"
         text display_name "表示名"
         text avatar_url "アイコンURL"
-        text role "役割(student/admin等)"
+        text role "役割(user/admin)"
         integer is_active "有効フラグ(0/1)"
         boolean is_profile_completed "プロフィール完了フラグ"
         datetime created_at "作成日時"

@@ -58,7 +58,7 @@ erDiagram
         text email "メールアドレス"
         text display_name "表示名"
         text avatar_url "アイコンURL"
-        text role "役割 / DEFAULT 'student'"
+        text role "役割 / DEFAULT 'user'"
         integer is_active "有効フラグ"
         boolean is_profile_completed
         datetime created_at

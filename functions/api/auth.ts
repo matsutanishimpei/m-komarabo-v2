@@ -172,7 +172,7 @@ auth.get('/callback', async (c) => {
                 .split(',')
                 .map((e: string) => e.trim().toLowerCase())
                 .filter((e: string) => e.length > 0);
-            role = adminEmails.includes(googleUser.email.toLowerCase()) ? 'admin' : 'student';
+            role = adminEmails.includes(googleUser.email.toLowerCase()) ? 'admin' : 'user';
 
             await c.env.DB.prepare(`
                 INSERT INTO users (id, google_sub, email, display_name, avatar_url, role, is_profile_completed)
