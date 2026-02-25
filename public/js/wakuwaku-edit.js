@@ -51,7 +51,7 @@ function renderEditForm(product) {
 
                 <div>
                     <label class="block text-sm font-medium text-slate-300 mb-2">
-                        URL（任意）
+                        作品URL（WEBアプリ）<span class="text-red-400">*</span>
                     </label>
                     <input type="url" id="url" value="${escapeHtml(product.url || '')}"
                         class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition">
@@ -110,7 +110,7 @@ async function updateProduct() {
     const url = document.getElementById('url').value.trim();
     const devObsession = document.getElementById('devObsession').value.trim();
 
-    if (!validateRequired(title, 'アプリ名')) {
+    if (!validateRequired(title, 'アプリ名') || !validateRequired(url, '作品URL（WEBアプリ）')) {
         return;
     }
 
@@ -120,7 +120,7 @@ async function updateProduct() {
             body: JSON.stringify({
                 id: productId,
                 title,
-                url: url || null,
+                url,
                 dev_obsession: devObsession || null
             })
         });

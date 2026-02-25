@@ -238,7 +238,7 @@ function selectDraft(draft) {
     document.getElementById('edit-title').value = draft.title;
     document.getElementById('edit-url').value = draft.url || '';
     document.getElementById('edit-memo').value = draft.dev_obsession || '';
-    document.getElementById('edit-protocol').value = draft.protocol_log || '';
+    document.getElementById('edit-protocol').value = draft.protocol_log || 'AIと対話して作ってもらってね!';
     document.getElementById('edit-dialogue').value = draft.dialogue_log || '';
     document.getElementById('edit-catchcopy').value = draft.catch_copy || '';
 }
@@ -250,7 +250,7 @@ function clearEditor() {
     document.getElementById('edit-title').value = '';
     document.getElementById('edit-url').value = '';
     document.getElementById('edit-memo').value = '';
-    document.getElementById('edit-protocol').value = '';
+    document.getElementById('edit-protocol').value = 'AIと対話して作ってもらってね!';
     document.getElementById('edit-dialogue').value = '';
     document.getElementById('edit-catchcopy').value = '';
 }
@@ -285,6 +285,7 @@ window.sealProduct = async () => {
     if (!currentDraftId) return;
     if (!confirm('本当に封印（提出）しますか？これにより公開され、編集できなくなります。')) return;
 
+    const url = document.getElementById('edit-url').value;
     const protocol_log = document.getElementById('edit-protocol').value;
     const dialogue_log = document.getElementById('edit-dialogue').value;
     const catch_copy = document.getElementById('edit-catchcopy').value;
@@ -299,6 +300,7 @@ window.sealProduct = async () => {
             method: 'POST',
             body: JSON.stringify({
                 id: currentDraftId,
+                url,
                 protocol_log,
                 dialogue_log,
                 catch_copy

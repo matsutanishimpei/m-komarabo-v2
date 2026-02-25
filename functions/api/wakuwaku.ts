@@ -126,7 +126,7 @@ wakuwaku.post('/drafts/save', async (c) => {
 wakuwaku.post('/seal', async (c) => {
     try {
         const user = c.get('user');
-        const { id, protocol_log, dialogue_log, catch_copy } = await c.req.json();
+        const { id, url, protocol_log, dialogue_log, catch_copy } = await c.req.json();
 
         // 必須チェック
         if (!protocol_log || !dialogue_log) {
@@ -142,12 +142,12 @@ wakuwaku.post('/seal', async (c) => {
             return c.json({ success: false, message: '権限がありません' }, 403);
         }
 
-        // 更新して公開
+        // 更新して公開（url を含めて一括更新）
         await c.env.DB.prepare(`
             UPDATE products 
-            SET protocol_log = ?, dialogue_log = ?, catch_copy = ?, status = 'published', sealed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+            SET url = ?, protocol_log = ?, dialogue_log = ?, catch_copy = ?, status = 'published', sealed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
             WHERE id = ?
-        `).bind(protocol_log, dialogue_log, catch_copy || null, id).run();
+        `).bind(url || null, protocol_log, dialogue_log, catch_copy || null, id).run();
 
         return c.json({ success: true, message: '封印完了' });
     } catch (err) {

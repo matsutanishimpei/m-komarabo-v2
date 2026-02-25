@@ -61,7 +61,7 @@ async function submitProduct() {
     const initialPromptLog = document.getElementById('initialPromptLog').value.trim();
     const devObsession = document.getElementById('devObsession').value.trim();
 
-    if (!validateRequired(title, 'アプリ名') || !validateRequired(initialPromptLog, 'AIとの格闘記録')) {
+    if (!validateRequired(title, 'アプリ名') || !validateRequired(url, '作品URL（WEBアプリ）') || !validateRequired(initialPromptLog, 'AIとの格闘記録')) {
         return;
     }
 
@@ -74,7 +74,7 @@ async function submitProduct() {
             method: 'POST',
             body: JSON.stringify({
                 title,
-                url: url || null,
+                url,
                 initial_prompt_log: initialPromptLog,
                 dev_obsession: devObsession || null
             })
