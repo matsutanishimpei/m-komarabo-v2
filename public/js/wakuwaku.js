@@ -37,7 +37,8 @@ async function init() {
 
     loadArchives();
     loadBasePrompts();
-    switchTab('personal');
+    const initTab = new URLSearchParams(window.location.search).get('tab');
+    switchTab(initTab === 'gallery' ? 'gallery' : 'personal');
 }
 
 window.handleLogout = () => commonLogout('/wakuwaku/index.html');
