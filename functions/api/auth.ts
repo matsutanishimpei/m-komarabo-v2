@@ -149,13 +149,20 @@ auth.get('/callback', async (c) => {
 
         // 3. Upsert: google_sub をキーにDBを検索
         const existingUser = await c.env.DB.prepare(
-            'SELECT id, display_name, role, is_profile_completed FROM users WHERE google_sub = ?'
+            'SELECT id, display_name, role, is_profile_completed, is_active FROM users WHERE google_sub = ?'
         ).bind(googleUser.sub).first<{
             id: string;
             display_name: string;
             role: string;
             is_profile_completed: number;
+            is_active: number;
         }>();
+
+        // 無効化済みユーザーはログインさせない
+        if (existingUser && existingUser.is_active === 0) {
+            console.warn(`[auth/callback] 無効化済みユーザーのログイン試行: ${existingUser.id}`);
+            return c.redirect('/login.html?error=account_disabled');
+        }
 
         let userId: string;
         let displayName: string;

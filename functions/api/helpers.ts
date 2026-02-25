@@ -143,6 +143,16 @@ export async function authMiddleware(
         return c.json({ error: 'トークンが無効です', code: 'INVALID_TOKEN' }, 401);
     }
 
+    // DB で is_active を確認（管理者による即時無効化を反映するため）
+    const dbUser = await c.env.DB.prepare(
+        'SELECT is_active FROM users WHERE id = ?'
+    ).bind(payload.id).first<{ is_active: number }>();
+
+    if (!dbUser || dbUser.is_active === 0) {
+        clearAuthCookie(c); // 無効化済みのため Cookie も削除
+        return c.json({ error: 'このアカウントは無効化されています', code: 'ACCOUNT_DISABLED' }, 403);
+    }
+
     const user: AuthUser = {
         id: payload.id,
         display_name: payload.display_name,
