@@ -55,7 +55,7 @@ issues.get('/list', async (c) => {
             params.push(user.id);
         }
 
-        query += ' ORDER BY created_at DESC';
+        query += ' ORDER BY issues.updated_at DESC';
 
         const { results, success, error } = await c.env.DB.prepare(query).bind(...params).all();
         if (!success) {
@@ -95,7 +95,7 @@ issues.post('/update-status', async (c) => {
                 return c.json({ success: false, message: 'この課題は既に着手されています' }, 400);
             }
             await c.env.DB.prepare(
-                'UPDATE issues SET status = ?, developer_id = ? WHERE id = ?'
+                'UPDATE issues SET status = ?, developer_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
             ).bind(status, user.id, id).run();
         } else if (status === 'closed') {
             // 解決承認は相談者本人のみ
@@ -103,12 +103,12 @@ issues.post('/update-status', async (c) => {
                 return c.json({ success: false, message: '解決承認は相談者本人のみが行えます' }, 403);
             }
             await c.env.DB.prepare(
-                'UPDATE issues SET status = ? WHERE id = ?'
+                'UPDATE issues SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
             ).bind(status, id).run();
         } else {
             // openなどその他のステータス
             await c.env.DB.prepare(
-                'UPDATE issues SET status = ? WHERE id = ?'
+                'UPDATE issues SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
             ).bind(status, id).run();
         }
 
@@ -119,32 +119,47 @@ issues.post('/update-status', async (c) => {
     }
 });
 
-// 挙手を下ろす（キャンセル）API — 担当者本人のみ許可
+// 担当者の解除 — 開発者（自己辞退）または相談者（強制解除）が実行可能
 issues.post('/unassign', async (c) => {
     try {
         const user = c.get('user');
         const { id } = await c.req.json();
 
         const issue = await c.env.DB.prepare(
-            'SELECT developer_id FROM issues WHERE id = ?'
-        ).bind(id).first<{ developer_id: string | null }>();
+            'SELECT requester_id, developer_id, status FROM issues WHERE id = ?'
+        ).bind(id).first<{ requester_id: string; developer_id: string | null; status: string }>();
 
         if (!issue) {
             return c.json({ success: false, message: '課題が見つかりません' }, 404);
         }
-
-        if (issue.developer_id !== user.id) {
-            return c.json({ success: false, message: '担当者本人のみ挙手を下ろせます' }, 403);
+        if (!issue.developer_id) {
+            return c.json({ success: false, message: '現在担当者がいません' }, 400);
         }
 
+        const isDeveloper = issue.developer_id === user.id;
+        const isRequester = issue.requester_id === user.id;
+
+        if (!isDeveloper && !isRequester) {
+            return c.json({ success: false, message: '担当者本人か相談者のみ解除できます' }, 403);
+        }
+
+        // 担当者を解除して open に戻す
         await c.env.DB.prepare(
-            'UPDATE issues SET status = "open", developer_id = NULL WHERE id = ?'
+            'UPDATE issues SET status = "open", developer_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
         ).bind(id).run();
 
-        return c.json({ success: true, message: '挙手を下ろしました' });
+        // 解除した旨を自動コメント（透明性のため）
+        const autoMsg = isDeveloper
+            ? `🔄 担当者が自ら挙手を下ろしました。この課題は再度オープンになりました。`
+            : `🔄 相談者が担当者の割り当てを解除しました。この課題は再度オープンになりました。`;
+        await c.env.DB.prepare(
+            'INSERT INTO comments (issue_id, user_id, content) VALUES (?, ?, ?)'
+        ).bind(id, user.id, autoMsg).run();
+
+        return c.json({ success: true, message: isDeveloper ? '挙手を下ろしました' : '担当者の割り当てを解除しました' });
     } catch (err) {
-        console.error('[issues/unassign] 挙手キャンセルエラー:', err);
-        return c.json({ success: false, message: '挙手の取り消しに失敗しました' }, 500);
+        console.error('[issues/unassign] 解除エラー:', err);
+        return c.json({ success: false, message: '解除に失敗しました' }, 500);
     }
 });
 
@@ -219,9 +234,15 @@ issues.post('/comment', async (c) => {
             return c.json({ success: false, message: 'コメントは2000文字以内で入力してください' }, 400);
         }
 
-        await c.env.DB.prepare(
-            'INSERT INTO comments (issue_id, user_id, content) VALUES (?, ?, ?)'
-        ).bind(issue_id, user.id, content.trim()).run();
+        await c.env.DB.batch([
+            c.env.DB.prepare(
+                'INSERT INTO comments (issue_id, user_id, content) VALUES (?, ?, ?)'
+            ).bind(issue_id, user.id, content.trim()),
+            // コメントがあった課題を「最終活動あり」として updated_at を更新
+            c.env.DB.prepare(
+                'UPDATE issues SET updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+            ).bind(issue_id),
+        ]);
 
         return c.json({ success: true, message: 'コメントを投稿しました' });
     } catch (err) {

@@ -63,6 +63,11 @@ function renderDetail(data) {
                     <button onclick="unassignIssue()" class="px-4 py-2 text-slate-400 text-[10px] font-bold hover:text-red-500 transition">挙手を下ろす</button>
                 `;
     }
+    if (isRequester && issue.status === 'progress' && issue.developer_id) {
+        actions.innerHTML += `
+                    <button onclick="releaseDeveloper()" class="px-4 py-2 text-amber-500 border border-amber-300 text-[10px] font-bold rounded-lg hover:bg-amber-50 transition">担当者を解除する</button>
+                `;
+    }
 
     // 要件定義ログの表示 (常に最新を表示)
     renderRequirementLog(issue.requirement_log, isRequester || isDeveloper);
@@ -198,7 +203,7 @@ async function updateStatus(status) {
 }
 
 async function unassignIssue() {
-    if (!confirm('着手をキャンセルしますか？')) return;
+    if (!confirm('挙手を下ろしますか？\n✔ この課題は再度オープンに戻ります。')) return;
     try {
         await apiRequest(`${API_BASE}/issues/unassign`, {
             method: 'POST',
@@ -207,6 +212,24 @@ async function unassignIssue() {
         fetchIssueDetail();
     } catch (err) {
         alert("キャンセルに失敗しました");
+    }
+}
+
+async function releaseDeveloper() {
+    const devName = window.currentIssueData?.developer_name || '担当者';
+    if (!confirm(`${devName} の担当を解除しますか？\n❗ 担当者へのこれまでの作業記録（コメント・要件定義ログ）は消えません。`)) return;
+    try {
+        const res = await apiRequest(`${API_BASE}/issues/unassign`, {
+            method: 'POST',
+            body: JSON.stringify({ id: issueId })
+        });
+        if (res.success) {
+            fetchIssueDetail();
+        } else {
+            alert('解除に失敗しました: ' + (res.message || ''));
+        }
+    } catch (err) {
+        alert("解除に失敗しました");
     }
 }
 
@@ -231,6 +254,7 @@ window.postComment = postComment;
 window.updateStatus = updateStatus;
 window.postResolutionReport = postResolutionReport;
 window.unassignIssue = unassignIssue;
+window.releaseDeveloper = releaseDeveloper;
 
 // Enterで送信（Shift+Enterで改行）
 document.getElementById('comment-input').addEventListener('keydown', e => {
