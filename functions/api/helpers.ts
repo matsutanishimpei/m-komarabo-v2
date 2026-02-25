@@ -1,4 +1,5 @@
 import { Context, Next } from 'hono';
+import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { Bindings, Variables, AuthUser, JwtPayload } from './types';
 import * as jose from 'jose';
 
@@ -6,7 +7,8 @@ import * as jose from 'jose';
 // JWT ユーティリティ
 // ========================================
 
-const COOKIE_NAME = 'auth_token';
+const AUTH_COOKIE_NAME = 'auth_token';
+const NONCE_COOKIE_NAME = 'oauth_nonce';
 const JWT_EXPIRY = '7d';
 
 /**
@@ -41,39 +43,68 @@ export async function verifyJwt(
 }
 
 /**
- * JWT Cookie を設定
+ * JWT Cookie を設定（Hono cookie ヘルパー使用）
  */
 export function setAuthCookie(c: Context, token: string): void {
-    // Cloudflare Pages では HTTPS が保証される
-    c.header('Set-Cookie',
-        `${COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`
-    );
+    setCookie(c, AUTH_COOKIE_NAME, token, {
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax',
+        maxAge: 7 * 24 * 60 * 60,
+    });
 }
 
 /**
  * JWT Cookie を削除
  */
 export function clearAuthCookie(c: Context): void {
-    c.header('Set-Cookie',
-        `${COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`
-    );
+    deleteCookie(c, AUTH_COOKIE_NAME, {
+        path: '/',
+        secure: true,
+    });
 }
 
 /**
  * Cookie からトークンを取得
  */
 export function getTokenFromCookie(c: Context): string | null {
-    const cookieHeader = c.req.header('Cookie');
-    if (!cookieHeader) return null;
+    return getCookie(c, AUTH_COOKIE_NAME) ?? null;
+}
 
-    const cookies = cookieHeader.split(';').map(c => c.trim());
-    for (const cookie of cookies) {
-        const [name, ...rest] = cookie.split('=');
-        if (name === COOKIE_NAME) {
-            return rest.join('=');
-        }
-    }
-    return null;
+// ========================================
+// OAuth nonce（CSRF対策）
+// ========================================
+
+/**
+ * OAuth nonce Cookie を設定（5分で失効）
+ * RFC 6749 Section 10.12 準拠の CSRF 対策
+ */
+export function setNonceCookie(c: Context, nonce: string): void {
+    setCookie(c, NONCE_COOKIE_NAME, nonce, {
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax',
+        maxAge: 300, // 5分
+    });
+}
+
+/**
+ * OAuth nonce Cookie を取得
+ */
+export function getNonceCookie(c: Context): string | null {
+    return getCookie(c, NONCE_COOKIE_NAME) ?? null;
+}
+
+/**
+ * OAuth nonce Cookie を削除（使用後に必ず消す）
+ */
+export function clearNonceCookie(c: Context): void {
+    deleteCookie(c, NONCE_COOKIE_NAME, {
+        path: '/',
+        secure: true,
+    });
 }
 
 // ========================================

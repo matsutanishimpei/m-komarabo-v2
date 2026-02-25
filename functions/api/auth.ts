@@ -8,6 +8,9 @@ import {
     authMiddleware,
     getTokenFromCookie,
     verifyJwt,
+    setNonceCookie,
+    getNonceCookie,
+    clearNonceCookie,
 } from './helpers';
 
 const auth = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -24,9 +27,14 @@ auth.get('/google', (c) => {
     const redirectUri = c.env.GOOGLE_REDIRECT_URI;
     const clientId = c.env.GOOGLE_CLIENT_ID;
 
-    // state パラメータでCSRF防止 + リダイレクト先を保持
+    // state パラメータでCSRF防止（RFC 6749 Section 10.12 準拠）
+    // nonce: 推測不可能な乱数。Cookie にも同じ値を保存しコールバックで照合する
     const redirectTo = c.req.query('redirect_to') || '/komarabo/index.html';
-    const state = btoa(JSON.stringify({ redirect_to: redirectTo }));
+    const nonce = crypto.randomUUID();
+    const state = btoa(JSON.stringify({ redirect_to: redirectTo, nonce }));
+
+    // nonce を HttpOnly Cookie に保存（5分で失効）
+    setNonceCookie(c, nonce);
 
     const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     authUrl.searchParams.set('client_id', clientId);
@@ -61,17 +69,43 @@ auth.get('/callback', async (c) => {
         return c.redirect('/login.html?error=no_code');
     }
 
-    // リダイレクト先を復元
+    // ========================================
+    // CSRF 検証（RFC 6749 Section 10.12 準拠）
+    // nonce Cookie と state の nonce を照合する
+    // ========================================
+    const cookieNonce = getNonceCookie(c);
+    clearNonceCookie(c); // 一度読んだらすぐ削除（リプレイ攻撃防止）
+
+    if (!cookieNonce) {
+        // Cookie がない = このブラウザはログインフローを開始していない
+        console.warn('[auth/callback] CSRF: oauth_nonce Cookie が見つかりません');
+        return c.redirect('/login.html?error=csrf_detected');
+    }
+
+    // リダイレクト先の復元 + nonce 検証
     let redirectTo = '/komarabo/index.html';
     if (stateParam) {
         try {
             const stateData = JSON.parse(atob(stateParam));
+
+            // nonce の一致確認
+            if (stateData.nonce !== cookieNonce) {
+                console.warn('[auth/callback] CSRF: nonce 不一致（Login CSRF の疑い）');
+                return c.redirect('/login.html?error=csrf_detected');
+            }
+
             if (stateData.redirect_to && stateData.redirect_to.startsWith('/') && !stateData.redirect_to.startsWith('//')) {
                 redirectTo = stateData.redirect_to;
             }
         } catch {
-            // state パースエラーは無視
+            // state のパースに失敗 = 不正な state
+            console.warn('[auth/callback] CSRF: state のパースに失敗');
+            return c.redirect('/login.html?error=csrf_detected');
         }
+    } else {
+        // state なし = CSRF 対策なしのリクエスト
+        console.warn('[auth/callback] CSRF: state パラメータがありません');
+        return c.redirect('/login.html?error=csrf_detected');
     }
 
     try {
