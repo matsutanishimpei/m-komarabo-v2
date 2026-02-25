@@ -367,13 +367,27 @@ async function loadArchives() {
 
 function filterArchives() {
     const filterSelect = document.getElementById('filter-user');
+    const sortSelect = document.getElementById('sort-order');
     if (!filterSelect) return;
 
     const filterUser = filterSelect.value;
+    const sortOrder = sortSelect ? sortSelect.value : 'newest';
+
+    // 1. Filter
     let filtered = allProducts;
     if (filterUser !== 'all') {
         filtered = allProducts.filter(p => p.creator_name === filterUser);
     }
+
+    // 2. Sort
+    filtered = [...filtered]; // 元配列を変更しない
+    if (sortOrder === 'name') {
+        filtered.sort((a, b) => (a.creator_name || '').localeCompare(b.creator_name || '', 'ja'));
+    } else {
+        // newest: sealed_at 降順（デフォルト）
+        filtered.sort((a, b) => new Date(b.sealed_at) - new Date(a.sealed_at));
+    }
+
     renderGrid(filtered);
 }
 window.filterArchives = filterArchives;

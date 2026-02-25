@@ -31,7 +31,11 @@
     </style>
 
     <style>
-        body { visibility: hidden; opacity: 0; transition: opacity 0.5s ease; }
+        body {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
     </style>
 </head>
 
@@ -290,14 +294,21 @@
                     </h2>
                     <p class="text-sm text-slate-400">初期衝動のアーカイブ。</p>
 
-                    <!-- User Filter -->
-                    <div class="ml-auto flex items-center gap-2">
+                    <!-- Filter & Sort Controls -->
+                    <div class="ml-auto flex items-center gap-3">
                         <label for="filter-user" class="text-xs text-slate-400">Filter:</label>
                         <select id="filter-user" onchange="window.filterArchives()"
                             class="bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded px-2 py-1 outline-none focus:border-emerald-500 transition hover:border-emerald-500/50">
                             <option value="all">All Users</option>
                         </select>
+                        <label for="sort-order" class="text-xs text-slate-400">Sort:</label>
+                        <select id="sort-order" onchange="window.filterArchives()"
+                            class="bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded px-2 py-1 outline-none focus:border-emerald-500 transition hover:border-emerald-500/50">
+                            <option value="newest">新しい順</option>
+                            <option value="name">表示名順</option>
+                        </select>
                     </div>
+
                 </div>
 
                 <div id="archive-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
