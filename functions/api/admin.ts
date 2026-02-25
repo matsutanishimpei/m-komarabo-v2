@@ -171,25 +171,6 @@ admin.get('/recent-activity', async (c) => {
 });
 
 // ========================================
-// ベースプロンプト更新 API
-// ========================================
-
-admin.post('/update-base-prompt', async (c) => {
-    try {
-        const { prompt } = await c.req.json();
-
-        await c.env.DB.prepare(
-            "UPDATE site_configs SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = 'wakuwaku_base_prompt'"
-        ).bind(prompt).run();
-
-        return c.json({ success: true, message: 'ベースプロンプトを更新しました' });
-    } catch (err) {
-        console.error('[admin/update-base-prompt] 更新エラー:', err);
-        return c.json({ success: false, message: 'ベースプロンプトの更新に失敗しました' }, 500);
-    }
-});
-
-// ========================================
 // ベースプロンプト管理 API (feature別)
 // ========================================
 

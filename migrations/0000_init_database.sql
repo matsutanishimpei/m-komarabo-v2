@@ -18,7 +18,6 @@ DROP TABLE IF EXISTS _old_issues;
 DROP TABLE IF EXISTS _old_users;
 DROP TABLE IF EXISTS slot_constraints;
 DROP TABLE IF EXISTS base_prompts;
-DROP TABLE IF EXISTS site_configs;
 DROP TABLE IF EXISTS users;
 
 -- ==========================================
@@ -96,15 +95,6 @@ CREATE TABLE products (
     FOREIGN KEY (creator_id) REFERENCES users(id)
 );
 
--- Site Configs (システム全体の設定値)
--- ※ プロンプト類は base_prompts テーブルで管理
-CREATE TABLE site_configs (
-    key TEXT PRIMARY KEY,
-    value TEXT,
-    description TEXT,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Slot Constraints (ワクワク試作室のIdeationガチャ制約)
 CREATE TABLE slot_constraints (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -139,11 +129,7 @@ CREATE TABLE logs (
 -- 初期マスターデータ (シードデータ)
 -- ==========================================
 
--- 1. Site Configs（プロンプト以外の設定のみ）
-INSERT INTO site_configs (key, value, description) VALUES
-('wakuwaku_base_prompt', 'あなたは独創的で面白いプロトタイプ開発を支援する天才ハッカー的メンターです。', 'ワクワク試作室のデフォルトシステムプロンプト（非推奨: base_prompts を使用）');
-
--- 2. Base Prompts（ワクワク用 + コマラボ用）
+-- 1. Base Prompts（ワクワク用 + コマラボ用）
 INSERT INTO base_prompts (label, prompt, feature, is_active) VALUES
 ('社会課題解決', 'あなたはソーシャルアントレプレナー（社会起業家）です。提供された制約を活かしながら、SDGsや地域社会の課題を解決する、少し真面目だけど革新的なアプリのアイデアを出してください。', 'wakuwaku', 1),
 ('エンタメ・バカアプリ', 'あなたは「誰が使うんだこれ（笑）」と言われるような、無駄を楽しむ天才クリエイターです。提供された制約だけを使って、全く役に立たないけれど最高に笑える、尖りまくったウェブアプリのアイデアを提案してください。', 'wakuwaku', 1),

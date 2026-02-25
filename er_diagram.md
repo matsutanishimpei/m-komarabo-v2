@@ -59,12 +59,6 @@ erDiagram
         datetime updated_at "更新日時"
     }
 
-    SITE_CONFIGS {
-        text key PK "設定キー"
-        text value "設定値"
-        text description "説明"
-        datetime updated_at "更新日時"
-    }
     
     BASE_PROMPTS {
         integer id PK "ID"

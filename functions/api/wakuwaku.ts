@@ -6,23 +6,6 @@ const wakuwaku = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 // バージョン確認用
 wakuwaku.get('/version', (c) => c.json({ version: '2026-02-22-v1-oauth' }));
 
-// ベースプロンプト取得（管理画面から変更可能なあのプロンプト）
-wakuwaku.get('/base-prompt', async (c) => {
-    try {
-        const config = await c.env.DB.prepare(
-            'SELECT value FROM site_configs WHERE key = ?'
-        ).bind('wakuwaku_base_prompt').first<{ value: string }>();
-
-        return c.json({
-            success: true,
-            prompt: config?.value || 'プロンプトが設定されていません'
-        });
-    } catch (err) {
-        console.error('[wakuwaku/base-prompt] 取得エラー:', err);
-        return c.json({ success: false, message: 'プロンプトの取得に失敗しました' }, 500);
-    }
-});
-
 // ベースプロンプト一覧取得（複数パターン対応）
 wakuwaku.get('/base-prompts', async (c) => {
     try {
