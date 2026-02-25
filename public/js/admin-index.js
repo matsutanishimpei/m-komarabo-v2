@@ -55,7 +55,7 @@ let currentBasePrompts = [];
 
 async function loadBasePrompts() {
     try {
-        const data = await adminApiRequest('/api/admin/base-prompts/list');
+        const data = await adminApiRequest('/api/admin/base-prompts/list?feature=wakuwaku');
         const list = document.getElementById('basePromptList');
         if (data && data.results) {
             currentBasePrompts = data.results;
@@ -113,7 +113,8 @@ async function saveBasePrompt() {
         const res = await adminApiRequest('/api/admin/base-prompts/save', {
             id: id ? parseInt(id) : null,
             label,
-            prompt
+            prompt,
+            feature: 'wakuwaku'
         });
         if (res.success) {
             resetBasePromptForm();
@@ -185,70 +186,135 @@ async function importBasePrompts(event) {
 }
 window.importBasePrompts = importBasePrompts;
 
-// 要件定義プロンプトを読み込み
-async function loadRequirementPrompt() {
+// ========================================
+// コマラボ要件定義プロンプト管理
+// ========================================
+
+let currentKomaraboPrompts = [];
+
+async function loadKomaraboPrompts() {
     try {
-        const data = await apiRequest('/api/issues/requirement-prompt');
-        document.getElementById('requirementPrompt').value = data.prompt || '';
-    } catch (err) {
-        console.error('要件定義プロンプト取得エラー:', err);
-    }
-}
-
-// 要件定義プロンプトを更新
-async function updateRequirementPrompt() {
-    const prompt = document.getElementById('requirementPrompt').value.trim();
-
-    try {
-        const data = await adminApiRequest('/api/admin/update-requirement-prompt', { prompt });
-
-        if (data.success) {
-            alert('要件定義プロンプトを更新しました！');
-        } else {
-            alert('エラー: ' + (data.message || 'サーバーエラー'));
-        }
-    } catch (err) {
-        console.error('更新エラー:', err);
-        alert('更新に失敗しました');
-    }
-}
-window.updateRequirementPrompt = updateRequirementPrompt;
-
-async function exportRequirementPrompt() {
-    const prompt = document.getElementById('requirementPrompt').value;
-    const dataStr = JSON.stringify({ prompt }, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `requirement_prompt_${new Date().getTime()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-}
-window.exportRequirementPrompt = exportRequirementPrompt;
-
-async function importRequirementPrompt(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        try {
-            const data = JSON.parse(e.target.result);
-            if (data.prompt === undefined) {
-                alert('プロンプトデータが見つかりません');
+        const data = await adminApiRequest('/api/admin/base-prompts/list?feature=komarabo');
+        const list = document.getElementById('komaraboPromptList');
+        if (data && data.results) {
+            currentKomaraboPrompts = data.results;
+            if (currentKomaraboPrompts.length === 0) {
+                list.innerHTML = '<p class="text-center text-xs text-gray-500 py-4">登録されていません</p>';
                 return;
             }
-            if (!confirm('要件定義プロンプトを上書きしてインポートしますか？')) return;
-            document.getElementById('requirementPrompt').value = data.prompt;
-            await updateRequirementPrompt();
-        } catch (err) {
-            alert('無効なJSONファイルです');
+            list.innerHTML = data.results.map(p => {
+                const isActive = p.is_active === 1;
+                const activeBadge = isActive
+                    ? '<span class="text-xs bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full">使用中</span>'
+                    : '';
+                const activateBtn = isActive
+                    ? ''
+                    : `<button onclick="activateKomaraboPrompt(${p.id})" class="text-blue-500 text-xs hover:underline bg-blue-50 px-2 py-0.5 rounded">使用中にする</button>`;
+                return `
+                    <div class="p-3 bg-white border ${isActive ? 'border-blue-300' : 'border-gray-100'} rounded-lg shadow-sm transition">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-2">
+                                <h4 class="font-bold text-gray-800 text-sm">${escapeHtml(p.label)}</h4>
+                                ${activeBadge}
+                            </div>
+                            <div class="flex gap-2">
+                                ${activateBtn}
+                                <button onclick="editKomaraboPrompt(${p.id})" class="text-gray-500 text-xs hover:underline bg-gray-50 px-2 py-0.5 rounded">編集</button>
+                                <button onclick="deleteKomaraboPrompt(${p.id})" class="text-red-500 text-xs hover:underline bg-red-50 px-2 py-0.5 rounded">削除</button>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-gray-500 line-clamp-2 font-mono bg-gray-50 p-1.5 rounded border border-gray-100">${escapeHtml(p.prompt)}</p>
+                    </div>
+                `;
+            }).join('');
         }
-        event.target.value = '';
-    };
-    reader.readAsText(file);
+    } catch (err) {
+        console.error('コマラボプロンプト一覧の取得に失敗:', err);
+        document.getElementById('komaraboPromptList').innerHTML = '<p class="text-red-500 text-xs text-center">読み込みエラー</p>';
+    }
 }
-window.importRequirementPrompt = importRequirementPrompt;
+window.loadKomaraboPrompts = loadKomaraboPrompts;
+
+function editKomaraboPrompt(id) {
+    const p = currentKomaraboPrompts.find(item => item.id === id);
+    if (!p) return;
+    document.getElementById('kp-id').value = p.id;
+    document.getElementById('kp-label').value = p.label;
+    document.getElementById('kp-content').value = p.prompt;
+    document.getElementById('kp-save-btn').textContent = '更新';
+}
+window.editKomaraboPrompt = editKomaraboPrompt;
+
+function resetKomaraboForm() {
+    document.getElementById('kp-id').value = '';
+    document.getElementById('kp-label').value = '';
+    document.getElementById('kp-content').value = '';
+    document.getElementById('kp-save-btn').textContent = '保存';
+}
+window.resetKomaraboForm = resetKomaraboForm;
+
+async function saveKomaraboPrompt() {
+    const id = document.getElementById('kp-id').value;
+    const label = document.getElementById('kp-label').value.trim();
+    const prompt = document.getElementById('kp-content').value.trim();
+
+    if (!label || !prompt) {
+        alert('ラベルとプロンプトを入力してください');
+        return;
+    }
+
+    try {
+        const res = await adminApiRequest('/api/admin/base-prompts/save', {
+            id: id ? parseInt(id) : null,
+            label,
+            prompt,
+            feature: 'komarabo',
+            // 新規登録時: コマラボプロンプトが1件もなければ自動でアクティブに
+            is_active: id ? undefined : (currentKomaraboPrompts.length === 0 ? 1 : 0)
+        });
+        if (res.success) {
+            resetKomaraboForm();
+            loadKomaraboPrompts();
+        } else {
+            alert('エラー: ' + res.message);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('保存失敗: ' + e.message);
+    }
+}
+window.saveKomaraboPrompt = saveKomaraboPrompt;
+
+async function deleteKomaraboPrompt(id) {
+    if (!confirm('本当に削除しますか？')) return;
+    try {
+        const res = await adminApiRequest('/api/admin/base-prompts/delete', { id });
+        if (res.success) {
+            loadKomaraboPrompts();
+            if (document.getElementById('kp-id').value == id) resetKomaraboForm();
+        }
+    } catch (e) {
+        console.error(e);
+        alert('削除失敗');
+    }
+}
+window.deleteKomaraboPrompt = deleteKomaraboPrompt;
+
+async function activateKomaraboPrompt(id) {
+    if (!confirm('このプロンプトを「使用中」に切り替えますか？')) return;
+    try {
+        const res = await adminApiRequest('/api/admin/base-prompts/activate-komarabo', { id });
+        if (res.success) {
+            loadKomaraboPrompts();
+        } else {
+            alert('エラー: ' + res.message);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('切り替え失敗');
+    }
+}
+window.activateKomaraboPrompt = activateKomaraboPrompt;
 
 // ユーザー一覧を取得
 async function loadUsers() {
@@ -478,7 +544,7 @@ async function init() {
     if (!isAdmin) return;
     loadStats();
     loadBasePrompts();
-    loadRequirementPrompt();
+    loadKomaraboPrompts();
     loadUsers();
     loadRecentActivity();
     loadConstraints();
