@@ -23,6 +23,7 @@ erDiagram
         text developer_id FK "着手開発者ID(users.id)"
         text requirement_log "要件定義ログ(Gemini等)"
         datetime created_at "投稿日時"
+        datetime updated_at "最終活動日時(コメント・ステータス変更で更新)"
     }
 
     CERTIFICATES {
@@ -69,6 +70,8 @@ erDiagram
         integer id PK "ID"
         text label "ラベル名"
         text prompt "プロンプト内容"
+        text feature "対象機能(wakuwaku/komarabo)"
+        integer is_active "使用中フラグ(0/1)"
         datetime created_at "作成日時"
         datetime updated_at "更新日時"
     }
