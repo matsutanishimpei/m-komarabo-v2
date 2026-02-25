@@ -257,11 +257,14 @@ admin.post('/base-prompts/activate-komarabo', async (c) => {
     try {
         const { id } = await c.req.json();
         if (!id) return c.json({ success: false, message: 'id は必須です' }, 400);
+        const numId = parseInt(id, 10);
+        if (isNaN(numId) || numId <= 0) return c.json({ success: false, message: 'id は正の整数です' }, 400);
 
         // 全コマラボプロンプトを無効化してから指定 ID のみ有効化（バッチでアトミック）
+        // feature='komarabo' のレコードのみを対象にする
         await c.env.DB.batch([
             c.env.DB.prepare("UPDATE base_prompts SET is_active = 0 WHERE feature = 'komarabo'"),
-            c.env.DB.prepare('UPDATE base_prompts SET is_active = 1 WHERE id = ?').bind(id),
+            c.env.DB.prepare("UPDATE base_prompts SET is_active = 1 WHERE id = ? AND feature = 'komarabo'").bind(numId),
         ]);
 
         return c.json({ success: true, message: 'アクティブな要件定義プロンプトを切り替えました' });
@@ -285,9 +288,12 @@ admin.post('/base-prompts/import', async (c) => {
         ];
         for (const p of prompts) {
             if (p.label && p.prompt) {
+                const label = String(p.label).trim().slice(0, 100);   // 100文字上限
+                const prompt = String(p.prompt).trim().slice(0, 10000); // 10000文字上限
+                if (!label || !prompt) continue;
                 stmts.push(c.env.DB.prepare(
                     'INSERT INTO base_prompts (label, prompt, feature, is_active) VALUES (?, ?, ?, ?)'
-                ).bind(p.label, p.prompt, feature, p.is_active ?? 1));
+                ).bind(label, prompt, feature, p.is_active ?? 1));
             }
         }
         await c.env.DB.batch(stmts);

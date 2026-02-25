@@ -124,6 +124,9 @@ issues.post('/unassign', async (c) => {
     try {
         const user = c.get('user');
         const { id } = await c.req.json();
+        if (!id) {
+            return c.json({ success: false, message: 'id は必須です' }, 400);
+        }
 
         const issue = await c.env.DB.prepare(
             'SELECT requester_id, developer_id, status FROM issues WHERE id = ?'
