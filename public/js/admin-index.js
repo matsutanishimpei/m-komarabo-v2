@@ -316,6 +316,51 @@ async function activateKomaraboPrompt(id) {
 }
 window.activateKomaraboPrompt = activateKomaraboPrompt;
 
+async function exportKomaraboPrompts() {
+    if (currentKomaraboPrompts.length === 0) {
+        alert('エクスポートするデータがありません');
+        return;
+    }
+    const dataStr = JSON.stringify(currentKomaraboPrompts, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `komarabo_prompts_${new Date().getTime()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+window.exportKomaraboPrompts = exportKomaraboPrompts;
+
+async function importKomaraboPrompts(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            const prompts = Array.isArray(data) ? data : data.prompts;
+            if (!Array.isArray(prompts)) {
+                alert('有効なJSONファイルではありません（配列またはpromptsキーが必要です）');
+                return;
+            }
+            if (!confirm(`${prompts.length}件のプロンプトをインポートします。\n現在のコマラボプロンプトは上書きされます。よろしいですか？`)) return;
+            const res = await adminApiRequest('/api/admin/base-prompts/import?feature=komarabo', prompts);
+            if (res.success) {
+                alert('インポート完了');
+                loadKomaraboPrompts();
+            } else {
+                alert('インポート失敗: ' + (res.message || 'サーバーエラー'));
+            }
+        } catch (err) {
+            alert('無効なJSONファイルです');
+        }
+        event.target.value = '';
+    };
+    reader.readAsText(file);
+}
+window.importKomaraboPrompts = importKomaraboPrompts;
+
 // ユーザー一覧を取得
 async function loadUsers() {
     try {

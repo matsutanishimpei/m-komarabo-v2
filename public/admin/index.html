@@ -143,6 +143,14 @@
                     </h2>
                     <p class="text-xs text-gray-500 mb-3">課題投稿時にGeminiへ渡すシステムプロンプト。<span
                             class="text-blue-600 font-medium">使用中</span>バッジがついているものが現在利用中です。</p>
+                    <div class="flex gap-2 mb-4 justify-end">
+                        <input type="file" id="importKomaraboPromptsFile" accept=".json" class="hidden"
+                            onchange="importKomaraboPrompts(event)">
+                        <button onclick="exportKomaraboPrompts()"
+                            class="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition font-medium">エクスポート</button>
+                        <button onclick="document.getElementById('importKomaraboPromptsFile').click()"
+                            class="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition font-medium">インポート</button>
+                    </div>
 
                     <!-- 新規追加フォーム -->
                     <div class="mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
