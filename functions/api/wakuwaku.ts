@@ -27,7 +27,7 @@ wakuwaku.get('/base-prompt', async (c) => {
 wakuwaku.get('/base-prompts', async (c) => {
     try {
         const { results } = await c.env.DB.prepare(
-            'SELECT id, label, prompt FROM base_prompts ORDER BY id ASC'
+            'SELECT id, label, prompt FROM base_prompts WHERE feature = \'wakuwaku\' AND is_active = 1 ORDER BY id ASC'
         ).all();
 
         return c.json({

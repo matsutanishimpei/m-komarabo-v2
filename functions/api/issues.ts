@@ -4,14 +4,14 @@ import { getTokenFromCookie, verifyJwt } from './helpers';
 
 const issues = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-// 要件定義プロンプトの取得
+// 要件定義プロンプトの取得（コマラボ用・is_active=1の1件）
 issues.get('/requirement-prompt', async (c) => {
     try {
         const row = await c.env.DB.prepare(
-            "SELECT value FROM site_configs WHERE key = 'komarabo_requirement_prompt'"
-        ).first<{ value: string }>();
+            "SELECT id, label, prompt FROM base_prompts WHERE feature = 'komarabo' AND is_active = 1 LIMIT 1"
+        ).first<{ id: number; label: string; prompt: string }>();
 
-        return c.json({ prompt: row?.value || '' });
+        return c.json({ prompt: row?.prompt || '', label: row?.label || '', id: row?.id || null });
     } catch (err) {
         console.error('[issues/requirement-prompt] 取得エラー:', err);
         return c.json({ prompt: '' });

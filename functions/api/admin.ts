@@ -190,12 +190,19 @@ admin.post('/update-base-prompt', async (c) => {
 });
 
 // ========================================
-// ベースプロンプト管理 API (Multiple)
+// ベースプロンプト管理 API (feature別)
 // ========================================
 
+// 一覧取得（feature でフィルタ可能）
 admin.get('/base-prompts/list', async (c) => {
     try {
-        const { results } = await c.env.DB.prepare('SELECT id, label, prompt FROM base_prompts ORDER BY id ASC').all();
+        const feature = c.req.query('feature'); // 'wakuwaku' | 'komarabo' | undefined(全件)
+        const query = feature
+            ? 'SELECT id, label, prompt, feature, is_active FROM base_prompts WHERE feature = ? ORDER BY id ASC'
+            : 'SELECT id, label, prompt, feature, is_active FROM base_prompts ORDER BY id ASC';
+        const { results } = feature
+            ? await c.env.DB.prepare(query).bind(feature).all()
+            : await c.env.DB.prepare(query).all();
         return c.json({ results });
     } catch (err) {
         console.error('[admin/base-prompts/list] 取得エラー:', err);
@@ -203,22 +210,27 @@ admin.get('/base-prompts/list', async (c) => {
     }
 });
 
+// 保存（新規 / 更新）
 admin.post('/base-prompts/save', async (c) => {
     try {
-        const { id, label, prompt } = await c.req.json();
+        const { id, label, prompt, feature = 'wakuwaku', is_active } = await c.req.json();
 
-        if (!label || !prompt) {
-            return c.json({ success: false, message: 'ラベルとプロンプトは必須です' }, 400);
-        }
+        if (!label || !label.trim()) return c.json({ success: false, message: 'ラベルは必須です' }, 400);
+        if (!label.trim() || label.length > 100) return c.json({ success: false, message: 'ラベルは100文字以内で入力してください' }, 400);
+        if (!prompt || !prompt.trim()) return c.json({ success: false, message: 'プロンプトは必須です' }, 400);
+        if (prompt.length > 10000) return c.json({ success: false, message: 'プロンプトは10000文字以内で入力してください' }, 400);
+        if (!['wakuwaku', 'komarabo'].includes(feature)) return c.json({ success: false, message: 'feature は wakuwaku または komarabo です' }, 400);
+
+        const activeVal = is_active === undefined ? 1 : (is_active ? 1 : 0);
 
         if (id) {
             await c.env.DB.prepare(
-                'UPDATE base_prompts SET label = ?, prompt = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-            ).bind(label, prompt, id).run();
+                'UPDATE base_prompts SET label = ?, prompt = ?, feature = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+            ).bind(label.trim(), prompt.trim(), feature, activeVal, id).run();
         } else {
             await c.env.DB.prepare(
-                'INSERT INTO base_prompts (label, prompt) VALUES (?, ?)'
-            ).bind(label, prompt).run();
+                'INSERT INTO base_prompts (label, prompt, feature, is_active) VALUES (?, ?, ?, ?)'
+            ).bind(label.trim(), prompt.trim(), feature, activeVal).run();
         }
 
         return c.json({ success: true, message: '保存しました' });
@@ -228,6 +240,7 @@ admin.post('/base-prompts/save', async (c) => {
     }
 });
 
+// 削除
 admin.post('/base-prompts/delete', async (c) => {
     try {
         const { id } = await c.req.json();
@@ -239,45 +252,53 @@ admin.post('/base-prompts/delete', async (c) => {
     }
 });
 
+// コマラボプロンプトの有効化（他のkomaraboプロンプトは自動で無効化）
+admin.post('/base-prompts/activate-komarabo', async (c) => {
+    try {
+        const { id } = await c.req.json();
+        if (!id) return c.json({ success: false, message: 'id は必須です' }, 400);
+
+        // 全コマラボプロンプトを無効化してから指定 ID のみ有効化（バッチでアトミック）
+        await c.env.DB.batch([
+            c.env.DB.prepare("UPDATE base_prompts SET is_active = 0 WHERE feature = 'komarabo'"),
+            c.env.DB.prepare('UPDATE base_prompts SET is_active = 1 WHERE id = ?').bind(id),
+        ]);
+
+        return c.json({ success: true, message: 'アクティブな要件定義プロンプトを切り替えました' });
+    } catch (err) {
+        console.error('[admin/base-prompts/activate-komarabo] 切り替えエラー:', err);
+        return c.json({ success: false, message: '切り替えに失敗しました' }, 500);
+    }
+});
+
+// インポート（feature 別）
 admin.post('/base-prompts/import', async (c) => {
     try {
-        const prompts = await c.req.json() as any[];
+        const body = await c.req.json();
+        const feature = c.req.query('feature') || 'wakuwaku';
+        const prompts = Array.isArray(body) ? body : body.prompts;
         if (!Array.isArray(prompts)) {
             return c.json({ success: false, message: '配列形式のデータが必要です' }, 400);
         }
-        const stmts = [c.env.DB.prepare('DELETE FROM base_prompts')];
+        const stmts: D1PreparedStatement[] = [
+            c.env.DB.prepare('DELETE FROM base_prompts WHERE feature = ?').bind(feature)
+        ];
         for (const p of prompts) {
             if (p.label && p.prompt) {
-                stmts.push(c.env.DB.prepare('INSERT INTO base_prompts (label, prompt) VALUES (?, ?)').bind(p.label, p.prompt));
+                stmts.push(c.env.DB.prepare(
+                    'INSERT INTO base_prompts (label, prompt, feature, is_active) VALUES (?, ?, ?, ?)'
+                ).bind(p.label, p.prompt, feature, p.is_active ?? 1));
             }
         }
         await c.env.DB.batch(stmts);
-        return c.json({ success: true, message: 'ベースプロンプトをインポートしました' });
+        return c.json({ success: true, message: 'インポートしました' });
     } catch (err) {
         console.error('[admin/base-prompts/import] インポートエラー:', err);
         return c.json({ success: false, message: 'インポートに失敗しました' }, 500);
     }
 });
 
-// ========================================
-// 要件定義プロンプト更新 API (コマラボ)
-// ========================================
-
-admin.post('/update-requirement-prompt', async (c) => {
-    try {
-        const { prompt } = await c.req.json();
-
-        // UPSERT: キーが存在しない場合は INSERT、存在する場合は UPDATE
-        await c.env.DB.prepare(
-            "INSERT INTO site_configs (key, value, updated_at) VALUES ('komarabo_requirement_prompt', ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP"
-        ).bind(prompt, prompt).run();
-
-        return c.json({ success: true, message: '要件定義プロンプトを更新しました' });
-    } catch (err) {
-        console.error('[admin/update-requirement-prompt] 更新エラー:', err);
-        return c.json({ success: false, message: '要件定義プロンプトの更新に失敗しました' }, 500);
-    }
-});
+// 旧 update-requirement-prompt は恶化（base_prompts に統一）
 
 // ========================================
 // 制約スロット管理 API
