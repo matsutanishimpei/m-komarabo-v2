@@ -72,7 +72,7 @@ async function loadBasePrompts() {
                                     <button onclick="deleteBasePrompt(${p.id})" class="text-red-500 text-xs hover:underline bg-red-50 px-2 py-0.5 rounded">削除</button>
                                 </div>
                             </div>
-                            <p class="text-[10px] text-gray-500 line-clamp-2 font-mono bg-gray-50 p-1.5 rounded border border-gray-100">${escapeHtml(p.prompt)}</p>
+                            <pre class="text-[10px] text-gray-500 font-mono bg-gray-50 p-1.5 rounded border border-gray-100 whitespace-pre-wrap break-all">${escapeHtml(p.prompt)}</pre>
                         </div>
                     `).join('');
         }
@@ -223,7 +223,7 @@ async function loadKomaraboPrompts() {
                                 <button onclick="deleteKomaraboPrompt(${p.id})" class="text-red-500 text-xs hover:underline bg-red-50 px-2 py-0.5 rounded">削除</button>
                             </div>
                         </div>
-                        <p class="text-[10px] text-gray-500 line-clamp-2 font-mono bg-gray-50 p-1.5 rounded border border-gray-100">${escapeHtml(p.prompt)}</p>
+                        <pre class="text-[10px] text-gray-500 font-mono bg-gray-50 p-1.5 rounded border border-gray-100 whitespace-pre-wrap break-all">${escapeHtml(p.prompt)}</pre>
                     </div>
                 `;
             }).join('');
