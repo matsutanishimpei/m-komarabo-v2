@@ -64,10 +64,9 @@
 
     <script type="module">
         import { injectWakuwakuBackground } from './js/theme.js';
+        import { apiRequest } from './js/common.js';
         injectWakuwakuBackground();
-    </script>
 
-    <script>
         const urlParams = new URLSearchParams(window.location.search);
         const productId = urlParams.get('id');
         const currentUserHash = localStorage.getItem('user_hash');
@@ -83,12 +82,7 @@
             }
 
             try {
-                const res = await fetch(`/api/wakuwaku/product/${productId}`);
-                const product = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(product.message);
-                }
+                const product = await apiRequest(`/api/wakuwaku/product/${productId}`);
 
                 const sealedDate = new Date(product.sealed_at);
                 const isOwner = currentUserHash && product.creator_user_hash === currentUserHash;

@@ -85,26 +85,7 @@
         </div>
 
         <!-- Management Sections -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Base Prompt Management -->
-            <div class="bg-white rounded-xl p-6 border border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
-                        </path>
-                    </svg>
-                    ワクワク試作室 - ベースプロンプト
-                </h2>
-                <textarea id="basePrompt" rows="8"
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none mb-4"
-                    placeholder="読み込み中..."></textarea>
-                <button onclick="updateBasePrompt()"
-                    class="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition">
-                    プロンプトを更新
-                </button>
-            </div>
-
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <!-- User Management -->
             <div class="bg-white rounded-xl p-6 border border-gray-200">
                 <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -115,23 +96,44 @@
                     </svg>
                     ユーザー管理
                 </h2>
-                <div id="userList" class="space-y-2 max-h-64 overflow-y-auto">
+                <div id="userList" class="space-y-2 max-h-96 overflow-y-auto pr-2">
+                    <p class="text-sm text-gray-500">読み込み中...</p>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="bg-white rounded-xl p-6 border border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    最近の投稿
+                </h2>
+                <div id="recentActivity" class="space-y-2 max-h-96 overflow-y-auto pr-2">
                     <p class="text-sm text-gray-500">読み込み中...</p>
                 </div>
             </div>
         </div>
 
-        <!-- Recent Activity -->
-        <div class="mt-6 bg-white rounded-xl p-6 border border-gray-200">
+        <!-- Base Prompt Management -->
+        <div class="bg-white rounded-xl p-6 border border-gray-200">
             <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                    </path>
                 </svg>
-                最近の投稿
+                ワクワク試作室 - ベースプロンプト
             </h2>
-            <div id="recentActivity" class="space-y-3">
-                <p class="text-sm text-gray-500">読み込み中...</p>
+            <textarea id="basePrompt" rows="20"
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none mb-4 font-mono"
+                placeholder="読み込み中..."></textarea>
+            <div class="flex justify-end">
+                <button onclick="updateBasePrompt()"
+                    class="px-8 py-3 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-xl transition shadow-lg shadow-purple-200">
+                    プロンプトを更新
+                </button>
             </div>
         </div>
     </main>

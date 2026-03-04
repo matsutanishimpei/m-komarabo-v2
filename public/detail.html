@@ -131,13 +131,15 @@
         </section>
     </main>
 
-    <script>
+    <script type="module">
+        import { checkAuth, apiRequest, setButtonLoading } from './js/common.js';
+
+        const auth = checkAuth(true);
+        const currentUserHash = auth.userHash;
         const API_BASE = '/api';
-        const currentUserHash = localStorage.getItem('user_hash');
         const urlParams = new URLSearchParams(window.location.search);
         const issueId = urlParams.get('id');
 
-        if (!currentUserHash) window.location.href = 'login.html';
         if (!issueId) window.location.href = 'index.html';
 
         document.getElementById('display-user-hash').textContent = currentUserHash;
@@ -148,13 +150,12 @@
 
         async function fetchIssueDetail() {
             try {
-                const res = await fetch(`${API_BASE}/get-issue-detail?id=${issueId}`);
-                const data = await res.json();
+                const data = await apiRequest(`${API_BASE}/get-issue-detail?id=${issueId}`);
                 renderDetail(data);
                 scrollToBottom();
             } catch (err) {
                 console.error(err);
-                alert("データの取得に失敗しました");
+                alert("データの取得に失敗しました: " + err.message);
             }
         }
 
@@ -185,12 +186,12 @@
             const isDeveloper = currentUserHash === issue.developer_user_hash;
 
             if (isRequester && issue.status !== 'closed') {
-                actions.innerHTML += `<button onclick="updateStatus('closed')" class="px-4 py-2 border-2 border-slate-900 text-slate-900 text-[10px] font-black rounded-lg hover:bg-slate-900 hover:text-white transition">解決を承認する</button>`;
+                actions.innerHTML += `<button onclick="updateStatus('closed', event)" class="px-4 py-2 border-2 border-slate-900 text-slate-900 text-[10px] font-black rounded-lg hover:bg-slate-900 hover:text-white transition">解決を承認する</button>`;
             }
             if (isDeveloper && issue.status === 'progress') {
                 actions.innerHTML += `
-                    <button onclick="postResolutionReport()" class="px-4 py-2 bg-blue-600 text-white text-[10px] font-black rounded-lg hover:bg-blue-700 shadow-md shadow-blue-100 transition">解決報告を送る</button>
-                    <button onclick="unassignIssue()" class="px-4 py-2 text-slate-400 text-[10px] font-bold hover:text-red-500 transition">挙手を下ろす</button>
+                    <button onclick="postResolutionReport(event)" class="px-4 py-2 bg-blue-600 text-white text-[10px] font-black rounded-lg hover:bg-blue-700 shadow-md shadow-blue-100 transition">解決報告を送る</button>
+                    <button onclick="unassignIssue(event)" class="px-4 py-2 text-slate-400 text-[10px] font-bold hover:text-red-500 transition">挙手を下ろす</button>
                 `;
             }
 
@@ -217,70 +218,90 @@
         async function postComment() {
             const input = document.getElementById('comment-input');
             const content = input.value.trim();
+            const submitBtn = document.querySelector('button[onclick="postComment()"]');
             if (!content) return;
 
+            setButtonLoading(submitBtn, true, '送信中...');
             try {
-                const res = await fetch(`${API_BASE}/post-comment`, {
+                await apiRequest(`${API_BASE}/post-comment`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ issue_id: issueId, content, user_hash: currentUserHash })
                 });
-                if (res.ok) {
-                    input.value = '';
-                    await fetchIssueDetail();
-                    scrollToBottom();
-                }
+
+                input.value = '';
+                await fetchIssueDetail();
+                scrollToBottom();
             } catch (err) {
-                alert("コメントの投稿に失敗しました");
+                alert("コメントの投稿に失敗しました: " + err.message);
+            } finally {
+                setButtonLoading(submitBtn, false);
             }
         }
+        window.postComment = postComment;
 
-        async function updateStatus(status) {
+        async function updateStatus(status, event) {
             if (!confirm(`解決を承認し、この課題をクローズしますか？`)) return;
+            const btn = event ? (event.currentTarget || event.target) : null;
+            if (btn) setButtonLoading(btn, true, '更新中...');
+
             try {
-                const res = await fetch(`${API_BASE}/update-issue-status`, {
+                await apiRequest(`${API_BASE}/update-issue-status`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: issueId, status })
+                    body: JSON.stringify({ id: issueId, status, user_hash: currentUserHash })
                 });
-                if (res.ok) fetchIssueDetail();
+                fetchIssueDetail();
             } catch (err) {
-                alert("更新に失敗しました");
+                alert("更新に失敗しました: " + err.message);
+                if (btn) setButtonLoading(btn, false);
             }
         }
+        window.updateStatus = updateStatus;
 
-        async function unassignIssue() {
+        async function unassignIssue(event) {
             if (!confirm('着手をキャンセルしますか？')) return;
+            const btn = event ? (event.currentTarget || event.target) : null;
+            if (btn) setButtonLoading(btn, true, '処理中...');
+
             try {
-                const res = await fetch(`${API_BASE}/unassign-issue`, {
+                await apiRequest(`${API_BASE}/unassign-issue`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: issueId })
                 });
-                if (res.ok) fetchIssueDetail();
+                fetchIssueDetail();
             } catch (err) {
-                alert("キャンセルに失敗しました");
+                alert("キャンセルに失敗しました: " + err.message);
+                if (btn) setButtonLoading(btn, false);
             }
         }
+        window.unassignIssue = unassignIssue;
 
-        async function postResolutionReport() {
+        async function postResolutionReport(event) {
+            const btn = event ? (event.currentTarget || event.target) : null;
+            if (btn) setButtonLoading(btn, true, '送信中...');
+
             const msg = "✅ 解決しました！内容の確認をお願いします。";
-            const res = await fetch(`${API_BASE}/post-comment`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ issue_id: issueId, content: msg, user_hash: currentUserHash })
-            });
-            if (res.ok) {
+            try {
+                await apiRequest(`${API_BASE}/post-comment`, {
+                    method: 'POST',
+                    body: JSON.stringify({ issue_id: issueId, content: msg, user_hash: currentUserHash })
+                });
+
                 alert("解決報告を送りました！");
                 await fetchIssueDetail();
                 scrollToBottom();
+            } catch (err) {
+                alert("解決報告の送信に失敗しました: " + err.message);
+            } finally {
+                if (btn) setButtonLoading(btn, false);
             }
         }
+        window.postResolutionReport = postResolutionReport;
 
         function logout() {
             localStorage.clear();
             window.location.href = 'login.html';
         }
+        window.logout = logout;
 
         // Enterで送信（Shift+Enterで改行）
         document.getElementById('comment-input').addEventListener('keydown', e => {

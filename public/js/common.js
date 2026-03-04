@@ -118,32 +118,67 @@ export function showError(elementId, message) {
 // ========================================
 
 /**
- * APIリクエストのラッパー
+ * APIリクエストのラッパー（自動リトライ＆タイムアウト付き）
  * @param {string} endpoint - APIエンドポイント
  * @param {Object} options - fetchオプション
+ * @param {number} retries - リトライ回数（デフォルト3回）
+ * @param {number} timeout - タイムアウトミリ秒（デフォルト10秒）
  * @returns {Promise<Object>}
  */
-export async function apiRequest(endpoint, options = {}) {
-    try {
-        const res = await fetch(endpoint, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-            throw new Error(data.message || `API Error: ${res.status}`);
-        }
-
-        return data;
-    } catch (err) {
-        console.error(`API Request Error (${endpoint}):`, err);
-        throw err;
+export async function apiRequest(endpoint, options = {}, retries = 3, timeout = 10000) {
+    let lastError;
+    
+    // オフラインチェック
+    if (!navigator.onLine) {
+        throw new Error('ネットワークに接続されていません。通信環境を確認してください。');
     }
+
+    for (let i = 0; i < retries; i++) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+
+        try {
+            const res = await fetch(endpoint, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options,
+                signal: controller.signal
+            });
+            clearTimeout(id);
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                // 4xxエラーなどはリトライしないようにする
+                if (res.status >= 400 && res.status < 500) {
+                    throw new Error(data.message || `API Error: ${res.status}`);
+                }
+                throw new Error(data.message || `Server Error: ${res.status}`);
+            }
+
+            return data;
+        } catch (err) {
+            clearTimeout(id);
+            lastError = err;
+            
+            // AbortError(タイムアウト) または ネットワークエラーの場合はリトライ
+            if (err.name === 'AbortError' || err.message === 'Failed to fetch') {
+                console.warn(`[リトライ ${i + 1}/${retries}] ${endpoint} - ${err.message}`);
+                // エクスポネンシャルバックオフ (1秒 -> 2秒 -> 4秒...)
+                if (i < retries - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
+                }
+                continue;
+            }
+            
+            // それ以外（バリデーションエラーなど4xx系）はそのまま投げる
+            throw err;
+        }
+    }
+
+    throw new Error(`通信に失敗しました。時間をおいて再試行してください。（詳細: ${lastError.message}）`);
 }
 
 /**
@@ -220,5 +255,41 @@ export function validateUrl(url) {
     } catch {
         alert('有効なURLを入力してください');
         return false;
+    }
+}
+
+// ========================================
+// ボタン状態管理
+// ========================================
+
+/**
+ * ボタンのローディング状態（連打防止）を設定
+ * @param {HTMLElement} button - 対象のボタン要素
+ * @param {boolean} isLoading - ローディング中かどうか
+ * @param {string} loadingText - ローディング中に表示するテキスト
+ */
+export function setButtonLoading(button, isLoading, loadingText = '処理中...') {
+    if (!button) return;
+
+    if (isLoading) {
+        // 現在のテキストを保存
+        if (!button.dataset.originalText) {
+            button.dataset.originalText = button.innerHTML;
+        }
+        button.disabled = true;
+        button.classList.add('opacity-70', 'cursor-not-allowed');
+        button.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 inline text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            ${loadingText}
+        `;
+    } else {
+        button.disabled = false;
+        button.classList.remove('opacity-70', 'cursor-not-allowed');
+        if (button.dataset.originalText) {
+            button.innerHTML = button.dataset.originalText;
+        }
     }
 }

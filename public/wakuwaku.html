@@ -202,7 +202,7 @@
         import { injectWakuwakuBackground } from './js/theme.js';
         injectWakuwakuBackground();
 
-        import { checkAuth, logout as commonLogout } from './js/common.js';
+        import { checkAuth, logout as commonLogout, apiRequest } from './js/common.js';
 
         // ログイン状態を表示
         function displayLoginStatus() {
@@ -235,8 +235,7 @@
         // プロダクト一覧を読み込む
         async function loadProducts() {
             try {
-                const res = await fetch('/api/wakuwaku/products');
-                const products = await res.json();
+                const products = await apiRequest('/api/wakuwaku/products');
 
                 const grid = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3');
 

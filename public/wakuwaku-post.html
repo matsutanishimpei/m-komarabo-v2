@@ -183,7 +183,7 @@ User: いいね！でもここはもっと..."
         import { injectWakuwakuBackground } from './js/theme.js';
         injectWakuwakuBackground();
 
-        import { checkAuth, apiRequest, validateRequired } from './js/common.js';
+        import { checkAuth, apiRequest, validateRequired, setButtonLoading } from './js/common.js';
 
         // 認証チェック
         const auth = checkAuth(true, 'wakuwaku');
@@ -222,6 +222,9 @@ User: いいね！でもここはもっと..."
                 return;
             }
 
+            const submitBtn = document.querySelector('button[onclick="submitProduct()"]');
+            setButtonLoading(submitBtn, true, '封印中...');
+
             try {
                 const data = await apiRequest('/api/wakuwaku/post-product', {
                     method: 'POST',
@@ -239,10 +242,12 @@ User: いいね！でもここはもっと..."
                     location.href = 'wakuwaku.html';
                 } else {
                     alert('エラー: ' + (data.message || 'サーバーエラーが発生しました'));
+                    setButtonLoading(submitBtn, false);
                 }
             } catch (err) {
                 console.error('投稿エラー:', err);
                 alert('投稿に失敗しました\n\n詳細: ' + err.message);
+                setButtonLoading(submitBtn, false);
             }
         }
         window.submitProduct = submitProduct;

@@ -88,7 +88,9 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { apiRequest, setButtonLoading } from './js/common.js';
+
         let isLoginMode = true;
         let theme = 'komarabo'; // 'komarabo' (light) or 'wakuwaku' (dark)
         let redirectTo = 'komarabo.html';
@@ -196,16 +198,23 @@
                 registerBtn.textContent = '新規登録';
             }
         }
+        window.toggleForm = toggleForm;
 
-        async function handleAuth(endpoint, payload) {
+        async function handleAuth(endpoint, payload, originalBtnText) {
+            const btn = document.activeElement; // 押されたボタンを取得
+
+            if (!payload.user_hash || !payload.password) {
+                alert('ニックネームとパスワードを入力してください');
+                return;
+            }
+
+            setButtonLoading(btn, true, '認証中...');
+
             try {
-                const res = await fetch(endpoint, {
+                const data = await apiRequest(endpoint, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-
-                const data = await res.json();
 
                 if (data.success) {
                     localStorage.setItem('user_hash', data.user_hash);
@@ -217,27 +226,28 @@
                     location.href = redirectTo;
                 } else {
                     alert(data.message || '認証に失敗しました');
+                    setButtonLoading(btn, false);
                 }
             } catch (err) {
                 console.error(err);
-                alert('エラーが発生しました');
+                alert('エラー: ' + err.message);
+                setButtonLoading(btn, false);
             }
         }
 
         function login() {
             const user_hash = document.getElementById('loginUserHash').value;
             const password = document.getElementById('loginPassword').value;
-            handleAuth('/api/login', { user_hash, password });
+            handleAuth('/api/login', { user_hash, password }, 'ログイン');
         }
+        window.login = login;
 
         function register() {
             const user_hash = document.getElementById('registerUserHash').value;
             const password = document.getElementById('registerPassword').value;
-            handleAuth('/api/login', { user_hash, password }); // Assuming same endpoint handles registration if new user? 
-            // Original code used same endpoint. Usually registration might be separate or flag based, 
-            // but checking original implementation: logic seems to be "get or create" or handled by backend.
-            // Keeping as is.
+            handleAuth('/api/login', { user_hash, password }, '新規登録');
         }
+        window.register = register;
 
         // Event Listeners for Hash Change (to support back button or manual URL change without reload)
         window.addEventListener('hashchange', applyTheme);

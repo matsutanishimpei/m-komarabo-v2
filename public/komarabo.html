@@ -169,7 +169,7 @@
     </script>
     <script type="module">
         import { GoogleGenerativeAI } from "@google/generative-ai";
-        import { checkAuth, logout as commonLogout, displayUserName } from './js/common.js';
+        import { checkAuth, logout as commonLogout, displayUserName, apiRequest, setButtonLoading } from './js/common.js';
 
         // ログインチェック
         const auth = checkAuth(true, 'komarabo');
@@ -219,12 +219,7 @@
                     ? `/api/list-issues?filter=mine&user_hash=${currentUserHash}`
                     : `/api/list-issues?filter=all`;
 
-                const res = await fetch(endpoint);
-                if (!res.ok) {
-                    const errData = await res.json();
-                    throw new Error(errData.message || 'データ取得に失敗しました');
-                }
-                const data = await res.json();
+                const data = await apiRequest(endpoint);
 
                 if (!Array.isArray(data)) {
                     console.error("Data is not an array:", data);
@@ -311,37 +306,37 @@
 
         async function takeIssue(id) {
             if (!confirm('この課題に着手しますか？')) return;
+            const button = event.currentTarget || event.target;
+            setButtonLoading(button, true, '着手中...');
             try {
-                const res = await fetch('/api/update-issue-status', {
+                await apiRequest('/api/update-issue-status', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id, status: 'progress', user_hash: currentUserHash })
                 });
-                if (res.ok) {
-                    // 即時反映のためにデータをリロード
-                    fetchIssues();
-                    alert('着手しました！「現在着手中」へ移動しました。');
-                }
+                // 即時反映のためにデータをリロード
+                fetchIssues();
+                alert('着手しました！「現在着手中」へ移動しました。');
             } catch (err) {
-                alert('エラーが発生しました');
+                alert('エラー: ' + err.message);
+                setButtonLoading(button, false);
             }
         }
         window.takeIssue = takeIssue;
 
         async function unassignIssue(id) {
             if (!confirm('この課題への挙手を下ろしますか？（未着手状態に戻ります）')) return;
+            const button = event.currentTarget || event.target;
+            setButtonLoading(button, true, '処理中...');
             try {
-                const res = await fetch('/api/unassign-issue', {
+                await apiRequest('/api/unassign-issue', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id })
                 });
-                if (res.ok) {
-                    fetchIssues();
-                    alert('挙手を下ろしました。');
-                }
+                fetchIssues();
+                alert('挙手を下ろしました。');
             } catch (err) {
-                alert('エラーが発生しました');
+                alert('エラー: ' + err.message);
+                setButtonLoading(button, false);
             }
         }
         window.unassignIssue = unassignIssue;
@@ -351,25 +346,22 @@
             event.stopPropagation();
 
             if (!confirm('この課題を取り下げますか？\n※着手されていない課題のみ削除できます')) return;
+            
+            const button = event.currentTarget || event.target;
+            setButtonLoading(button, true, '削除中...');
 
             try {
-                const res = await fetch('/api/delete-issue', {
+                const result = await apiRequest('/api/delete-issue', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id, user_hash: currentUserHash })
                 });
 
-                const result = await res.json();
-
-                if (res.ok) {
-                    fetchIssues();
-                    alert(result.message || '課題を削除しました');
-                } else {
-                    alert(result.message || '削除に失敗しました');
-                }
+                fetchIssues();
+                alert(result.message || '課題を削除しました');
             } catch (err) {
                 console.error('Delete Error:', err);
-                alert('エラーが発生しました');
+                alert('エラー: ' + err.message);
+                setButtonLoading(button, false);
             }
         }
         window.deleteIssue = deleteIssue;
@@ -378,6 +370,7 @@
             const apiKey = document.getElementById('gemini_api_key').value.trim();
             const title = document.getElementById('title').value;
             const description = document.getElementById('description').value;
+            const submitBtn = document.querySelector('button[onclick="postIssue()"]');
 
             if (!title || !description) {
                 alert('タイトルと内容を入力してください');
@@ -385,16 +378,13 @@
             }
 
             const payload = { user_hash: currentUserHash, title, description };
+            
+            setButtonLoading(submitBtn, true, '投稿中...');
 
-            const postPromise = fetch('/api/post-issue', {
+            const postPromise = apiRequest('/api/post-issue', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
-            }).then(async res => {
-                if (!res.ok) {
-                    const error = await res.json();
-                    throw new Error(error.message);
-                }
+            }).then(() => {
                 fetchIssues();
             });
 
@@ -418,6 +408,8 @@
                 document.getElementById('description').value = '';
             } catch (err) {
                 alert('投稿エラー: ' + err.message);
+            } finally {
+                setButtonLoading(submitBtn, false);
             }
         }
 
