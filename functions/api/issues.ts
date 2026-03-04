@@ -324,6 +324,39 @@ issues.post('/update-requirement', async (c) => {
     }
 });
 
+// サブタイトルを更新するAPI
+issues.post('/update-subtitle', async (c) => {
+    try {
+        const user = c.get('user');
+        const { id, subtitle } = await c.req.json();
+
+        if (subtitle && subtitle.length > 200) {
+            return c.json({ success: false, message: 'サブタイトルは200文字以内にしてください' }, 400);
+        }
+
+        // 権限確認（相談者 または 担当開発者）
+        const issue = await c.env.DB.prepare(
+            'SELECT requester_id, developer_id FROM issues WHERE id = ?'
+        ).bind(id).first<{ requester_id: string; developer_id: string | null }>();
+
+        if (!issue) return c.json({ success: false, message: '課題が見つかりません' }, 404);
+
+        const isAuthorized = (issue.requester_id === user.id) || (issue.developer_id === user.id);
+        if (!isAuthorized) {
+            return c.json({ success: false, message: '編集権限がありません' }, 403);
+        }
+
+        await c.env.DB.prepare(
+            'UPDATE issues SET subtitle = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+        ).bind(subtitle || null, id).run();
+
+        return c.json({ success: true, message: 'サブタイトルを更新しました' });
+    } catch (err) {
+        console.error('[issues/update-subtitle] 更新エラー:', err);
+        return c.json({ success: false, message: '更新に失敗しました' }, 500);
+    }
+});
+
 // 悩み事を投稿するAPI
 issues.post('/post', async (c) => {
     try {

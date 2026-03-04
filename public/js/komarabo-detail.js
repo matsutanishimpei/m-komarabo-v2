@@ -53,6 +53,10 @@ function renderDetail(data) {
 
     const isRequester = currentUser.id === issue.requester_id;
     const isDeveloper = currentUser.id === issue.developer_id;
+    const canEditSubtitle = isRequester || isDeveloper;
+
+    // サブタイトル表示
+    renderSubtitleArea(issue.subtitle, canEditSubtitle);
 
     if (isRequester && issue.status !== 'closed') {
         actions.innerHTML += `<button onclick="updateStatus('closed')" class="px-4 py-2 border-2 border-slate-900 text-slate-900 text-[10px] font-black rounded-lg hover:bg-slate-900 hover:text-white transition">解決を承認する</button>`;
@@ -91,6 +95,76 @@ function renderDetail(data) {
                 `;
     }).join('') || '<div class="h-full flex items-center justify-center text-slate-300 text-xs italic">やり取りはまだありません</div>';
 }
+
+// サブタイトル表示エリア
+function renderSubtitleArea(subtitle, canEdit) {
+    const area = document.getElementById('subtitle-area');
+    if (!area) return;
+
+    const editBtn = canEdit
+        ? `<button onclick="startEditSubtitle()" class="ml-2 text-slate-300 hover:text-blue-400 transition" title="サブタイトルを編集">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15H9v-2.828z"/>
+            </svg>
+           </button>`
+        : '';
+
+    if (subtitle) {
+        area.innerHTML = `<p class="text-sm text-slate-500 font-medium">${escapeHtml(subtitle)}${editBtn}</p>`;
+    } else if (canEdit) {
+        area.innerHTML = `<button onclick="startEditSubtitle()" class="text-xs text-slate-300 hover:text-blue-400 transition italic">➕ サブタイトルを追加</button>`;
+    } else {
+        area.innerHTML = '';
+    }
+}
+
+window.startEditSubtitle = function () {
+    const area = document.getElementById('subtitle-area');
+    const current = window.currentIssueData?.subtitle || '';
+    area.innerHTML = `
+        <div class="flex gap-2 items-center">
+            <input id="subtitle-input" type="text" maxlength="200"
+                class="flex-1 text-sm px-3 py-1.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
+                placeholder="課題の要約を入力..."
+                value="${escapeHtml(current)}">
+            <button onclick="saveSubtitle()" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition">保存</button>
+            <button onclick="cancelEditSubtitle()" class="px-3 py-1.5 text-slate-400 text-xs hover:bg-slate-100 rounded-lg transition">キャンセル</button>
+        </div>
+    `;
+    document.getElementById('subtitle-input').focus();
+    document.getElementById('subtitle-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') saveSubtitle();
+        if (e.key === 'Escape') cancelEditSubtitle();
+    });
+};
+
+window.cancelEditSubtitle = function () {
+    const issue = window.currentIssueData;
+    const isOwner = currentUser.id === issue.requester_id || currentUser.id === issue.developer_id;
+    renderSubtitleArea(issue.subtitle, isOwner);
+};
+
+window.saveSubtitle = async function () {
+    const input = document.getElementById('subtitle-input');
+    const newSubtitle = input.value.trim();
+    try {
+        const res = await apiRequest(`${API_BASE}/issues/update-subtitle`, {
+            method: 'POST',
+            body: JSON.stringify({ id: issueId, subtitle: newSubtitle })
+        });
+        if (res.success) {
+            window.currentIssueData.subtitle = newSubtitle;
+            const issue = window.currentIssueData;
+            const isOwner = currentUser.id === issue.requester_id || currentUser.id === issue.developer_id;
+            renderSubtitleArea(newSubtitle, isOwner);
+        } else {
+            alert('エラー: ' + (res.message || '不明なエラー'));
+        }
+    } catch (e) {
+        console.error(e);
+        alert('通信エラーが発生しました');
+    }
+};
 
 function renderRequirementLog(logText, canEdit) {
     const container = document.getElementById('gemini-logs');
