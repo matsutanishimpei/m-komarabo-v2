@@ -114,7 +114,7 @@ function renderRequirementLog(logText, canEdit) {
         h3.innerHTML = `
                     <div class="flex items-center gap-2">
                         <span class="w-1 h-3 bg-blue-400 rounded-full"></span>
-                        Gemini 要件定義ログ
+                        要件定義
                     </div>
                     ${editButtonHtml}
                  `;

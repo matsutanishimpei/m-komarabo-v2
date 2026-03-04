@@ -42,7 +42,11 @@
     </style>
 
     <style>
-        body { visibility: hidden; opacity: 0; transition: opacity 0.5s ease; }
+        body {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
     </style>
 </head>
 
@@ -77,23 +81,23 @@
 
                 <section class="mb-10">
                     <h3 class="text-[10px] uppercase font-black text-slate-400 mb-4 flex items-center gap-2">
-                        <span class="w-1 h-3 bg-slate-300 rounded-full"></span>
-                        詳細説明 / 要件
-                    </h3>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm leading-relaxed text-sm text-slate-600 whitespace-pre-wrap"
-                        id="issue-description">--</div>
-                </section>
-
-                <section>
-                    <h3 class="text-[10px] uppercase font-black text-slate-400 mb-4 flex items-center gap-2">
                         <span class="w-1 h-3 bg-blue-400 rounded-full"></span>
-                        Gemini 要件定義ログ
+                        要件定義
                     </h3>
                     <div class="space-y-4" id="gemini-logs">
                         <div class="p-4 bg-white rounded-2xl border border-slate-100 text-xs italic text-slate-400">
                             現在、要件定義ログの履歴はありません。
                         </div>
                     </div>
+                </section>
+
+                <section class="mb-10">
+                    <h3 class="text-[10px] uppercase font-black text-slate-400 mb-4 flex items-center gap-2">
+                        <span class="w-1 h-3 bg-slate-300 rounded-full"></span>
+                        詳細説明 / 要件
+                    </h3>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm leading-relaxed text-sm text-slate-600 whitespace-pre-wrap"
+                        id="issue-description">--</div>
                 </section>
 
                 <div class="mt-20 pt-8 border-t border-slate-200 text-xs space-y-4 opacity-50">
