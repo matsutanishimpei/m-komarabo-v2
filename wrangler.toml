@@ -7,8 +7,11 @@ database_name = "m-komarabo-v2-db"
 database_id = "d3ad4a59-fad0-482f-a1f1-8a6d95f026e3"
 
 # ========================================
-# Google OAuth 用シークレット設定
-# 以下のコマンドで設定してください:
+# シークレット（環境変数）設定ガイド
+#
+# 【本番環境（Cloudflare Pages）への登録コマンド】
+# 以下のコマンドを1つずつ実行すると、対話式で値を入力できる。
+# 登録した値は Cloudflare 側で管理され、コードから c.env.XXX で参照される。
 #
 #   npx wrangler pages secret put JWT_SECRET
 #   npx wrangler pages secret put GOOGLE_CLIENT_ID
@@ -16,9 +19,67 @@ database_id = "d3ad4a59-fad0-482f-a1f1-8a6d95f026e3"
 #   npx wrangler pages secret put GOOGLE_REDIRECT_URI
 #   npx wrangler pages secret put ADMIN_EMAILS
 #
-# GOOGLE_REDIRECT_URI の例:
-#   https://your-domain.pages.dev/api/auth/callback
+# 【ローカル開発環境への設定】
+# プロジェクトルートに ".dev.vars" ファイルを作成し、以下の形式で記述する。
+# （.gitignore への追加を忘れずに）
 #
-# ADMIN_EMAILS の例 (カンマ区切りで複数設定可能):
-#   REDACTED,other-admin@example.com
+#   JWT_SECRET=your_secret_here
+#   GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+#   GOOGLE_CLIENT_SECRET=xxxxx
+#   GOOGLE_REDIRECT_URI=http://localhost:8788/api/auth/callback
+#   ADMIN_EMAILS=your@email.com
+#
+# 各シークレットの詳細は以下を参照。
 # ========================================
+
+# ----------------------------------------
+# JWT_SECRET
+# ----------------------------------------
+# 用途: ログイン後に発行する JWT (JSON Web Token) の署名・検証に使用。
+#       HS256アルゴリズムで署名し、有効期限は7日間。
+#       Cookie (auth_token) に保存され、APIリクエストのたびに検証される。
+# 外部サービス: なし（自前で署名・検証するため）
+# 注意: 推測困難なランダム文字列を設定すること。
+#       この値が漏洩すると、任意のユーザーになりすましたJWTを偽造できる。
+
+# ----------------------------------------
+# GOOGLE_CLIENT_ID
+# ----------------------------------------
+# 用途: Google OAuth 認証フローの開始時に使用。
+#       Google の認可URL (/api/auth/google) に client_id として渡し、
+#       「どのアプリがログインを要求しているか」を Google に伝える。
+# 外部サービス: Google Cloud Console (https://console.cloud.google.com/)
+#               → 「認証情報」→「OAuth 2.0 クライアント ID」から取得
+# 注意: クライアントIDはフロントに露出しても基本安全だが、
+#       シークレットと対になるので一緒に管理する。
+
+# ----------------------------------------
+# GOOGLE_CLIENT_SECRET
+# ----------------------------------------
+# 用途: Google からのコールバック (/api/auth/callback) で使用。
+#       認可コード（code）をアクセストークンに交換する際、
+#       https://oauth2.googleapis.com/token に POST するリクエストに含める。
+# 外部サービス: Google Cloud Console → OAuth 2.0 クライアントのシークレット
+# 注意: これが漏洩すると第三者がトークン交換を偽装できる。絶対に公開しない。
+
+# ----------------------------------------
+# GOOGLE_REDIRECT_URI
+# ----------------------------------------
+# 用途: OAuth フロー完了後に Google がリダイレクトする先のURL。
+#       認可URLに redirect_uri として渡し、コールバック時の照合にも使用。
+# 外部サービス: Google Cloud Console → OAuth 2.0 クライアントの
+#               「承認済みのリダイレクト URI」に登録が必要。
+# 値の例:
+#   本番:   https://your-domain.pages.dev/api/auth/callback
+#   ローカル: http://localhost:8788/api/auth/callback
+#             ※ ローカルで試す場合は Google Console にもこのURLを追加登録すること
+
+# ----------------------------------------
+# ADMIN_EMAILS
+# ----------------------------------------
+# 用途: 新規ユーザーが初めてログインした際、このリストに含まれるメールアドレスなら
+#       role = 'admin' として登録される（それ以外は role = 'user'）。
+#       既存ユーザーのロール変更には使われない（DB直接更新が必要）。
+# 外部サービス: なし（Google から取得したメールアドレスと内部で照合するだけ）
+# 値の形式: カンマ区切りで複数指定可能（スペース不要）
+#   例: admin@example.com,other-admin@example.com
