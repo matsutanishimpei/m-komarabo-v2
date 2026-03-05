@@ -95,3 +95,27 @@ npm run dev
 npm run deploy
 ```
 Cloudflare Pages へプロジェクト全体をデプロイします。
+
+---
+
+## データベースバックアップ
+
+### 自動バックアップ
+GitHub Actions により、**毎日 00:00（JST）に D1 データベースを自動エクスポート**しています。  
+バックアップファイル（`.sql`）は以下のリポジトリに蓄積されます：
+
+**[matsutanishimpei/m-komarabo-v2-backup](https://github.com/matsutanishimpei/m-komarabo-v2-backup)**
+
+バックアップは `mysqldump` 相当の SQL 形式です。`CREATE TABLE` + `INSERT` が含まれています。
+
+### バックアップの中身を確認する
+[DB Browser for SQLite](https://sqlitebrowser.org/) で確認できます。  
+`ファイル` → `インポート` → `SQL ファイルからデータベースへ` で読み込んだ後、JOIN クエリを自由に実行できます。
+
+### 復元手順（障害時）
+バックアップは**空の D1 に対して流し込む**運用です（二重登録を防ぐため）。
+
+```bash
+# リモート（本番）の D1 に復元
+npx wrangler d1 execute m-komarabo-v2-db --remote --file=backup_xxx.sql
+```
