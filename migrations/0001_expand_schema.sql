@@ -1,1 +1,19 @@
--- 0001_expand_schema.sql (すでに本番適用済みのため空にします)
+-- ユーザーテーブル
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_hash TEXT UNIQUE NOT NULL,
+    role TEXT DEFAULT 'requester',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 悩み事テーブル
+CREATE TABLE IF NOT EXISTS issues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    requester_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    status TEXT DEFAULT 'open',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (requester_id) REFERENCES users(id)
+);

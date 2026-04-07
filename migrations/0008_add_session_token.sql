@@ -1,1 +1,1 @@
--- ALTER TABLE users ADD COLUMN session_token TEXT; (既に存在するためコメントアウト)
+ALTER TABLE users ADD COLUMN session_token TEXT;
