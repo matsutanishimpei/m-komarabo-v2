@@ -1,39 +1,21 @@
 import { Hono } from 'hono'
 import type { Env } from '../types'
+import { requireAuth, requireAdmin } from '../utils/auth-middleware'
 
 const admin = new Hono<Env>()
 
-// 管理者チェックAPI
+// 全管理APIは認証必須
+admin.use('*', requireAuth)
+
+// 管理者チェックAPI（認証のみ必要、管理者権限は不要）
 admin.post('/check', async (c) => {
-  try {
-    const { user_hash } = await c.req.json()
-
-    const user = await c.env.DB.prepare(
-      'SELECT is_admin FROM users WHERE user_hash = ?'
-    ).bind(user_hash).first()
-
-    return c.json({
-      is_admin: user?.is_admin === 1
-    })
-  } catch (err) {
-    console.error('Error checking admin:', err)
-    return c.json({ is_admin: false }, 500)
-  }
+  const user = c.get('user')
+  return c.json({ is_admin: user.is_admin === 1 })
 })
 
 // 統計情報API
-admin.post('/stats', async (c) => {
+admin.post('/stats', requireAdmin, async (c) => {
   try {
-    const { user_hash } = await c.req.json()
-
-    const user = await c.env.DB.prepare(
-      'SELECT is_admin FROM users WHERE user_hash = ?'
-    ).bind(user_hash).first()
-
-    if (!user || user.is_admin !== 1) {
-      return c.json({ error: 'Unauthorized' }, 403)
-    }
-
     const userCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM users').first()
     const issueCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM issues').first()
     const productCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM products').first()
@@ -53,18 +35,8 @@ admin.post('/stats', async (c) => {
 })
 
 // ユーザー一覧API
-admin.post('/users', async (c) => {
+admin.post('/users', requireAdmin, async (c) => {
   try {
-    const { user_hash } = await c.req.json()
-
-    const user = await c.env.DB.prepare(
-      'SELECT is_admin FROM users WHERE user_hash = ?'
-    ).bind(user_hash).first()
-
-    if (!user || user.is_admin !== 1) {
-      return c.json({ error: 'Unauthorized' }, 403)
-    }
-
     const { results } = await c.env.DB.prepare(`
       SELECT user_hash, created_at, is_admin
       FROM users
@@ -80,18 +52,8 @@ admin.post('/users', async (c) => {
 })
 
 // 最近の投稿API
-admin.post('/recent-activity', async (c) => {
+admin.post('/recent-activity', requireAdmin, async (c) => {
   try {
-    const { user_hash } = await c.req.json()
-
-    const user = await c.env.DB.prepare(
-      'SELECT is_admin FROM users WHERE user_hash = ?'
-    ).bind(user_hash).first()
-
-    if (!user || user.is_admin !== 1) {
-      return c.json({ error: 'Unauthorized' }, 403)
-    }
-
     const issues = await c.env.DB.prepare(`
       SELECT 
         issues.title,
@@ -99,7 +61,7 @@ admin.post('/recent-activity', async (c) => {
         users.user_hash,
         'コマラボ' as type
       FROM issues
-      JOIN users ON issues.user_id = users.id
+      JOIN users ON issues.requester_id = users.id
       ORDER BY issues.created_at DESC
       LIMIT 5
     `).all()
@@ -129,17 +91,9 @@ admin.post('/recent-activity', async (c) => {
 })
 
 // ベースプロンプト更新API（管理者用）
-admin.post('/update-base-prompt', async (c) => {
+admin.post('/update-base-prompt', requireAdmin, async (c) => {
   try {
-    const { prompt, user_hash } = await c.req.json()
-
-    const user = await c.env.DB.prepare(
-      'SELECT is_admin FROM users WHERE user_hash = ?'
-    ).bind(user_hash).first()
-
-    if (!user || user.is_admin !== 1) {
-      return c.json({ success: false, message: '管理者権限が必要です' }, 403)
-    }
+    const { prompt } = await c.req.json()
 
     await c.env.DB.prepare(`
       UPDATE site_configs 

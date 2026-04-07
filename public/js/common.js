@@ -158,9 +158,11 @@ export async function apiRequest(endpoint, options = {}, retries = 3, timeout = 
         const id = setTimeout(() => controller.abort(), timeout);
 
         try {
+            const authToken = localStorage.getItem('auth_token');
             const res = await fetch(endpoint, {
                 headers: {
                     'Content-Type': 'application/json',
+                    ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
                     ...options.headers
                 },
                 ...options,

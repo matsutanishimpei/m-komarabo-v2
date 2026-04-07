@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import type { Env } from '../types'
+import { requireAuth } from '../utils/auth-middleware'
 
 const wakuwaku = new Hono<Env>()
 
@@ -66,10 +67,15 @@ wakuwaku.get('/product/:id', async (c) => {
   return c.json(product)
 })
 
+// ========================================
+// 以下は認証が必要なルート
+// ========================================
+
 // プロダクト投稿API
-wakuwaku.post('/post-product', async (c) => {
+wakuwaku.post('/post-product', requireAuth, async (c) => {
   try {
-    const { title, url, initial_prompt_log, dev_obsession, user_hash } = await c.req.json()
+    const { title, url, initial_prompt_log, dev_obsession } = await c.req.json()
+    const user = c.get('user')
 
     if (!title || !initial_prompt_log) {
       return c.json({ success: false, message: 'タイトルと初期衝動履歴は必須です' }, 400)
@@ -77,14 +83,6 @@ wakuwaku.post('/post-product', async (c) => {
 
     if (url && !isValidUrl(url)) {
       return c.json({ success: false, message: 'URLはhttp://またはhttps://で始まる必要があります' }, 400)
-    }
-
-    const user = await c.env.DB.prepare(
-      'SELECT id FROM users WHERE user_hash = ?'
-    ).bind(user_hash).first()
-
-    if (!user) {
-      return c.json({ success: false, message: 'ユーザーが見つかりません' }, 404)
     }
 
     await c.env.DB.prepare(`
@@ -101,21 +99,19 @@ wakuwaku.post('/post-product', async (c) => {
 })
 
 // プロダクト更新API（initial_prompt_logは更新不可）
-wakuwaku.post('/update-product', async (c) => {
-  const { id, title, url, dev_obsession, user_hash } = await c.req.json()
+wakuwaku.post('/update-product', requireAuth, async (c) => {
+  const { id, title, url, dev_obsession } = await c.req.json()
+  const user = c.get('user')
 
-  const existingProduct = await c.env.DB.prepare(`
-    SELECT products.*, users.user_hash
-    FROM products
-    JOIN users ON products.creator_id = users.id
-    WHERE products.id = ?
-  `).bind(id).first()
+  const existingProduct = await c.env.DB.prepare(
+    'SELECT * FROM products WHERE id = ?'
+  ).bind(id).first()
 
   if (!existingProduct) {
     return c.json({ success: false, message: 'プロダクトが見つかりません' }, 404)
   }
 
-  if (existingProduct.user_hash !== user_hash) {
+  if (existingProduct.creator_id !== user.id) {
     return c.json({ success: false, message: '自分の投稿のみ編集できます' }, 403)
   }
 
@@ -133,28 +129,24 @@ wakuwaku.post('/update-product', async (c) => {
 })
 
 // プロダクト削除API
-wakuwaku.post('/delete-product', async (c) => {
+wakuwaku.post('/delete-product', requireAuth, async (c) => {
   try {
-    const { id, user_hash } = await c.req.json()
+    const { id } = await c.req.json()
+    const user = c.get('user')
 
-    const existingProduct = await c.env.DB.prepare(`
-      SELECT products.*, users.user_hash
-      FROM products
-      JOIN users ON products.creator_id = users.id
-      WHERE products.id = ?
-    `).bind(id).first()
+    const existingProduct = await c.env.DB.prepare(
+      'SELECT * FROM products WHERE id = ?'
+    ).bind(id).first()
 
     if (!existingProduct) {
       return c.json({ success: false, message: 'プロダクトが見つかりません' }, 404)
     }
 
-    if (existingProduct.user_hash !== user_hash) {
+    if (existingProduct.creator_id !== user.id) {
       return c.json({ success: false, message: '自分の投稿のみ削除できます' }, 403)
     }
 
-    await c.env.DB.prepare(`
-      DELETE FROM products WHERE id = ?
-    `).bind(id).run()
+    await c.env.DB.prepare('DELETE FROM products WHERE id = ?').bind(id).run()
 
     return c.json({ success: true, message: 'プロダクトを削除しました' })
   } catch (err) {
