@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS site_configs (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- デフォルトのベースプロンプトを挿入
-INSERT INTO site_configs (key, value) VALUES (
+-- デフォルトのベースプロンプトを挿入（既存の場合は無視）
+INSERT OR IGNORE INTO site_configs (key, value) VALUES (
     'wakuwaku_base_prompt',
     '# あなたの「誰得？」を形にしよう
 
