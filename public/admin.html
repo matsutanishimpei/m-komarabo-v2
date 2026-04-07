@@ -139,7 +139,7 @@
     </main>
 
     <script type="module">
-        import { checkAuth, adminApiRequest, apiRequest, formatDate, validateRequired } from './js/common.js';
+        import { checkAuth, adminApiRequest, apiRequest, formatDate, validateRequired, escapeHtml } from './js/common.js';
 
         // 認証チェック
         const auth = checkAuth(true);
@@ -229,10 +229,10 @@
                         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold text-sm">
-                                    ${user.user_hash.substring(0, 2).toUpperCase()}
+                                    ${escapeHtml(user.user_hash).substring(0, 2).toUpperCase()}
                                 </div>
                                 <div>
-                                    <p class="font-medium text-gray-900">${user.user_hash}</p>
+                                    <p class="font-medium text-gray-900">${escapeHtml(user.user_hash)}</p>
                                     <p class="text-xs text-gray-500">登録: ${formatDate(user.created_at)}</p>
                                 </div>
                             </div>
@@ -256,8 +256,8 @@
                         <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                             <div class="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
                             <div class="flex-1">
-                                <p class="text-sm text-gray-900">${activity.title}</p>
-                                <p class="text-xs text-gray-500">${activity.type} by ${activity.user_hash} - ${formatDate(activity.created_at)}</p>
+                                <p class="text-sm text-gray-900">${escapeHtml(activity.title)}</p>
+                                <p class="text-xs text-gray-500">${escapeHtml(activity.type)} by ${escapeHtml(activity.user_hash)} - ${formatDate(activity.created_at)}</p>
                             </div>
                         </div>
                     `).join('');

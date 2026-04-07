@@ -3,6 +3,8 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler pages dev public",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck",
     "deploy": "wrangler pages deploy public"
   },
   "dependencies": {

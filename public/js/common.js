@@ -4,6 +4,26 @@
  */
 
 // ========================================
+// セキュリティ関連
+// ========================================
+
+/**
+ * HTMLエスケープ（XSS対策）
+ * ユーザー入力をinnerHTMLに埋め込む前に必ず通すこと
+ * @param {string} str - エスケープする文字列
+ * @returns {string}
+ */
+export function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// ========================================
 // 認証関連
 // ========================================
 

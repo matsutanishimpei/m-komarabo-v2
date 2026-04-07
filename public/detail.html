@@ -132,7 +132,7 @@
     </main>
 
     <script type="module">
-        import { checkAuth, apiRequest, setButtonLoading } from './js/common.js';
+        import { checkAuth, apiRequest, setButtonLoading, escapeHtml } from './js/common.js';
 
         const auth = checkAuth(true);
         const currentUserHash = auth.userHash;
@@ -202,12 +202,12 @@
                     <div class="flex ${isMine ? 'justify-end' : 'justify-start'}">
                         <div class="max-w-[75%]">
                             <div class="flex items-center gap-2 mb-1 px-1 ${isMine ? 'justify-end' : ''}">
-                                <span class="text-[9px] font-bold text-slate-400">${c.user_hash}</span>
+                                <span class="text-[9px] font-bold text-slate-400">${escapeHtml(c.user_hash)}</span>
                                 <span class="text-[9px] text-slate-300 font-medium">${new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                             <div class="p-4 rounded-2xl text-[13px] shadow-sm ${isMine ? 'bg-slate-900 text-white rounded-tr-none' : 'bg-slate-50 text-slate-700 rounded-tl-none border border-slate-100'
                     }">
-                                ${c.content.replace(/\n/g, '<br>')}
+                                ${escapeHtml(c.content).replace(/\n/g, '<br>')}
                             </div>
                         </div>
                     </div>
