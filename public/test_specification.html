@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>運用テスト仕様書 - M-Komarabo v2</title>
+    <link rel="icon" href="/favicon.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -101,8 +102,7 @@
                             <tr>
                                 <td class="checkbox-cell"><input type="checkbox"></td>
                                 <td>課題の新規投稿（相談者）</td>
-                                <td>相談者モードで新規課題の「タイトル」「詳細」にエスケープすべき文字（`
-                                    <script>`など）を含めて投稿する。</td>
+                                <td>相談者モードで新規課題の「タイトル」「詳細」にエスケープすべき文字（`&lt;script&gt;`など）を含めて投稿する。</td>
                                 <td>「募集中 (Open)」一覧にスクリプトが実行されることなく安全に表示されること。</td>
                             </tr>
                             <tr>
