@@ -3,6 +3,16 @@ import type { Env } from '../types'
 
 const wakuwaku = new Hono<Env>()
 
+/** URLが安全なスキーム (http/https) かチェック */
+function isValidUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return ['http:', 'https:'].includes(parsed.protocol)
+  } catch {
+    return false
+  }
+}
+
 // ベースプロンプト取得API
 wakuwaku.get('/base-prompt', async (c) => {
   try {
@@ -65,6 +75,10 @@ wakuwaku.post('/post-product', async (c) => {
       return c.json({ success: false, message: 'タイトルと初期衝動履歴は必須です' }, 400)
     }
 
+    if (url && !isValidUrl(url)) {
+      return c.json({ success: false, message: 'URLはhttp://またはhttps://で始まる必要があります' }, 400)
+    }
+
     const user = await c.env.DB.prepare(
       'SELECT id FROM users WHERE user_hash = ?'
     ).bind(user_hash).first()
@@ -103,6 +117,10 @@ wakuwaku.post('/update-product', async (c) => {
 
   if (existingProduct.user_hash !== user_hash) {
     return c.json({ success: false, message: '自分の投稿のみ編集できます' }, 403)
+  }
+
+  if (url && !isValidUrl(url)) {
+    return c.json({ success: false, message: 'URLはhttp://またはhttps://で始まる必要があります' }, 400)
   }
 
   await c.env.DB.prepare(`
