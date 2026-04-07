@@ -6,6 +6,13 @@ yarn-error.log
 # Cloudflare Wrangler
 .wrangler/
 .env
+.dev.vars
+
+# Testing
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # System
 .DS_Store
