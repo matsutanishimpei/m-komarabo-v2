@@ -6,6 +6,7 @@ D1データベースのID: d3ad4a59-fad0-482f-a1f1-8a6d95f026e3
 
 # 松谷の試作室 (Matsutani's Prototyping Studio)
 
+![CI Status](https://github.com/matsutanishimpei/m-komarabo-v2/actions/workflows/ci.yml/badge.svg)
 2つの扉を持つ試作プラットフォームです。
 Cloudflare Pages と D1 データベース、Hono フレームワークを使用して構築されています。
 
@@ -156,24 +157,51 @@ npx playwright show-report
 
 ## データベースバックアップ
 
-### 自動バックアップ
-GitHub Actions により、**毎日 00:00（JST）に D1 データベースを自動エクスポート**しています。  
-バックアップファイル（`.sql`）は以下のリポジトリに蓄積されます：
+システムの継続性を確保するため、データの自動バックアップ体制を構築しています。
 
-**[matsutanishimpei/m-komarabo-v2-backup](https://github.com/matsutanishimpei/m-komarabo-v2-backup)**
+### 🔄 自動バックアップの仕組み
 
-バックアップは `mysqldump`相当の SQL 形式です。`CREATE TABLE` + `INSERT` が含まれています。
+GitHub Actions を利用して、定期的に D1 データベースの内容を SQL 形式でエクスポートし、専用のプライベートリポジトリに保存しています。
 
-### バックアップの中身を確認する
-[DB Browser for SQLite](https://sqlitebrowser.org/) で確認できます。  
-`ファイル` → `インポート` → `SQL ファイルからデータベースへ` で読み込んだ後、JOIN クエリを自由に実行できます。
+```mermaid
+graph TD
+    subgraph "Cloudflare Environment"
+        D1[(D1 Database)]
+    end
 
-### 復元手順（障害時）
-バックアップは**空の D1 に対して流し込む**運用です（二重登録を防ぐため）。
+    subgraph "GitHub Actions (Scheduled)"
+        Cron["Cron Schedule (Daily 00:00 JST)"]
+        Workflow["Backup Workflow"]
+        Wrangler["Wrangler CLI"]
+    end
+
+    subgraph "Backup Storage (Private)"
+        BackupRepo[(m-komarabo-v2-backup)]
+    end
+
+    Cron --> Workflow
+    Workflow --> Wrangler
+    Wrangler -- "npx wrangler d1 export --remote" --> D1
+    D1 -- "SQL Dump (.sql)" --> Wrangler
+    Wrangler -- "Git Commit & Push" --> BackupRepo
+```
+
+### 📁 バックアップ詳細
+
+- **実行タイミング**: 毎日 00:00 (JST)
+- **保存形式**: `.sql` ファイル（スキーマ定義 + インサート文）
+- **バックアップ先**: [matsutanishimpei/m-komarabo-v2-backup](https://github.com/matsutanishimpei/m-komarabo-v2-backup.git)（Private Repo）
+
+### 🛠️ 復元手順
+
+万が一の障害時には、バックアップリポジトリから最新の SQL ファイルを取得し、以下のコマンドで復旧を行います。
+
+> [!CAUTION]
+> 復元は既存のデータを上書き、あるいは重複させる可能性があるため、原則として空のデータベースに対して実行してください。
 
 ```bash
 # リモート（本番）の D1 に復元
-npx wrangler d1 execute m-komarabo-v2-db --remote --file=backup_xxx.sql
+npx wrangler d1 execute m-komarabo-v2-db --remote --file=backup_yyyymmdd.sql
 ```
 
 ---
