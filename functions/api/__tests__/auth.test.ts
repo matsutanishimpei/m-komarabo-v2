@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
 import { authMiddleware, adminGuard } from '../helpers';
 import { createMockDB, createTestJwt, TEST_JWT_SECRET, TEST_USER, TEST_ADMIN } from './helpers';

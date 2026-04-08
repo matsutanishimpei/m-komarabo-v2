@@ -48,7 +48,7 @@ issues.get('/list', async (c) => {
             JOIN users as requester ON issues.requester_id = requester.id
             LEFT JOIN users as developer ON issues.developer_id = developer.id
         `;
-        let params: any[] = [];
+        const params: any[] = [];
 
         if (filter === 'mine' && user) {
             query += ' WHERE issues.requester_id = ?';

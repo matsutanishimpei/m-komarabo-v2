@@ -158,7 +158,6 @@ admin.get('/recent-activity', async (c) => {
             LIMIT 5
         `).all();
 
-        // @ts-ignore — results type from D1 is loosely typed
         const activities = [...(issuesResult.results || []), ...(productsResult.results || [])]
             .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             .slice(0, 10);

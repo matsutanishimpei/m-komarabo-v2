@@ -11,7 +11,7 @@ test.describe('ワクワク試作室 (Prototyping Lab)', () => {
         await expect(page.locator('span:text("ワクワク試作室")')).toBeVisible();
     });
 
-    test('作品をクリックして詳細画面へ遷移できること', async ({ page }) => {
+    test('作品をクリックして詳細画面へ遷移できること', async () => {
         // This requires at least one product in the gallery.
         // We might want to check the "Archive" tab content if seeds exist.
     });

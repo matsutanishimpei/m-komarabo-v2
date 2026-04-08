@@ -125,6 +125,24 @@ npm run test:e2e
 npm run coverage
 ```
 
+#### 4. 静的解析と保守性 (Lint & Typecheck)
+コードのスタイルガイドへの準拠と、型定義の不整合をチェックします。開発中にエラーを未然に防ぐための重要なステップです。
+
+```bash
+# 静的解析（ESLint）の実行
+npm run lint
+
+# 型チェック（TypeScript）の実行
+npm run typecheck
+```
+
+#### 5. まとめてチェック (Full Verification)
+デプロイ前やCIでの利用を想定した、Lint・Typecheck・Testをすべて一括で実行するコマンドです。
+
+```bash
+npm run check
+```
+
 ### 📊 テスト結果の確認方法
 
 Playwright（E2Eテスト）を実行した後、以下のコマンドで視覚的なレポートを確認できます。
