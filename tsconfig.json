@@ -10,7 +10,6 @@
   "include": [
     "vitest.config.ts",
     "playwright.config.ts",
-    "src/**/*.ts",
     "tests/**/*.ts",
     "functions/**/*.ts"
   ]
