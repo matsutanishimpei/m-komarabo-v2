@@ -201,6 +201,17 @@ npx wrangler d1 execute m-komarabo-v2-db --remote --file=backup_yyyymmdd.sql
 
 ---
 
+## 📚 ドキュメント (Documents)
+
+プロジェクトの詳細な仕様や設計については、以下を参照してください。
+
+- [API仕様書](./docs/API_SPECIFICATION.md) - エンドポイント詳細・型定義
+- [データベース設計 (ER図)](./docs/er_diagram.md) - テーブル構造とリレーション
+- [クラス図](./docs/class_diagram.md) - モジュール構成と依存関係
+- [セキュリティ・レポート](./docs/SECURITY_AUDIT_REPORT.md) - 脆弱性診断・対策結果
+
+---
+
 ## ライセンス (License)
 
 このプロジェクトは **MIT ライセンス** の下で公開されています。  
