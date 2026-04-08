@@ -4,7 +4,7 @@
 **ベースURL:** `/api`  
 **フレームワーク:** Hono (Cloudflare Pages Functions)  
 **データベース:** Cloudflare D1  
-**最終更新日:** 2026-03-05
+**最終更新日:** 2026-04-08
 
 ---
 

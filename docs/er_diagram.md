@@ -20,6 +20,7 @@ erDiagram
         text subtitle "サブタイトル(任意)"
         text description "詳細内容"
         text status "ステータス(open/progress/closed)"
+        text github_url "GitHubリポジトリURL"
         text developer_id FK "着手開発者ID(users.id)"
         text requirement_log "要件定義ログ(Gemini等)"
         datetime created_at "投稿日時"
@@ -34,11 +35,21 @@ erDiagram
         datetime created_at "投稿日時"
     }
 
+    CERTIFICATES {
+        integer id PK "ID"
+        integer issue_id FK "課題ID"
+        text developer_id FK "開発者ID"
+        text verification_key "検証キー"
+        integer valuation_score "評価点"
+        datetime created_at "作成日時"
+    }
+
     PRODUCTS {
         integer id PK "プロダクトID"
         text creator_id FK "作成者ID(users.id)"
         text title "プロダクト名"
         text url "プロダクトURL(任意)"
+        text initial_prompt_log "初期プロンプトログ"
         text dev_obsession "開発の変執(任意)"
         text status "ステータス(published/draft)"
         text protocol_log "仕様書"
@@ -47,6 +58,16 @@ erDiagram
         datetime sealed_at "封印日時"
         datetime created_at "作成日時"
         datetime updated_at "更新日時"
+    }
+
+    LOGS {
+        text id PK "ログID"
+        text parent_id FK "親ログID(logs.id)"
+        text mode "対話モード"
+        text temperature "生成温度設定"
+        text title "ログタイトル"
+        text content "ログ内容"
+        datetime created_at "作成日時"
     }
 
     BASE_PROMPTS {
@@ -69,4 +90,7 @@ erDiagram
     ISSUES ||--o{ COMMENTS : "紐付き"
     USERS ||--o{ COMMENTS : "記入"
     USERS ||--o{ PRODUCTS : "作成"
+    ISSUES ||--o{ CERTIFICATES : "解決証明"
+    USERS ||--o{ CERTIFICATES : "獲得"
+    LOGS ||--o{ LOGS : "入れ子"
 ```

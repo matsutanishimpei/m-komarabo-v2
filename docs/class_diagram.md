@@ -101,4 +101,41 @@ classDiagram
     User "1" -- "*" Comment : 記入する
     User "1" -- "*" Product : 作成する
     Issue "1" -- "*" Comment : 保持する
+    class Certificate ["解決証明(certificates)"] {
+        +Int id
+        +Int issue_id
+        +String developer_id
+        +String verification_key
+        +Int valuation_score
+    }
+    class Log ["対話ログ(logs)"] {
+        +String id
+        +String parent_id
+        +String mode
+        +String content
+    }
+    Issue "1" -- "*" Certificate : 解決される
+    User "1" -- "*" Certificate : 獲得する
+    Log "1" -- "*" Log : 子ログを持つ
+```
+
+---
+
+## プロジェクト構造 (Directory Structure)
+
+```text
+m-komarabo-v2/
+├── .github/workflows/   # CI/CD (lint, typecheck, test, backup)
+├── docs/                # プロジェクトドキュメント (API, ER, Class, etc.)
+├── functions/           # Cloudflare Pages Functions (Backend)
+│   └── api/             # Hono による API エンドポイント
+├── migrations/          # D1 データベース初期化・遷移スクリプト
+├── public/              # 静的資産 (Frontend HTML, CSS, JS)
+├── src/                 # 共通ロジック
+├── tests/               # E2E テスト (Playwright)
+├── eslint.config.js     # Lint 設定
+├── package.json         # 依存関係・スクリプト管理
+├── tsconfig.json        # TypeScript 設定
+└── wrangler.toml        # Cloudflare Pages/D1 設定
+```
 ```

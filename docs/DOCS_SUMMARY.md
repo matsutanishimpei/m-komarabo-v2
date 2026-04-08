@@ -1,7 +1,7 @@
 # 困りごとラボ プロジェクト全容（正典）
 
 このドキュメントは「松谷の試作室」プロジェクトのアーキテクチャ、機能、データ構造、およびAPI仕様を網羅した公式サマリーです。  
-**最終更新日:** 2026-03-05
+**最終更新日:** 2026-04-08
 
 ## 1. アーキテクチャ概要
 
@@ -75,6 +75,7 @@ erDiagram
         text subtitle "サブタイトル (任意)"
         text description "詳細内容"
         text status "ステータス (open/progress/closed)"
+        text github_url "GitHubリポジトリURL"
         text developer_id FK "担当者ID (users.id)"
         text requirement_log "要件定義ログ (Gemini等)"
         datetime created_at
@@ -89,11 +90,21 @@ erDiagram
         datetime created_at
     }
 
+    CERTIFICATES {
+        integer id PK "ID"
+        integer issue_id FK "課題ID"
+        text developer_id FK "獲得開発者ID"
+        text verification_key "検証キー"
+        integer valuation_score "評価点"
+        datetime created_at
+    }
+
     PRODUCTS {
         integer id PK "プロダクトID"
         text creator_id FK "作成者ID (users.id)"
         text title "製品名"
         text url "製品URL"
+        text initial_prompt_log "初期プロンプトログ"
         text status "ステータス (draft/published)"
         text catch_copy "キャッチコピー"
         text dev_obsession "開発の変執"
@@ -102,6 +113,14 @@ erDiagram
         datetime sealed_at "封印日時"
         datetime created_at
         datetime updated_at
+    }
+
+    LOGS {
+        text id PK "ログID"
+        text parent_id FK "親ログID"
+        text mode "対話モード"
+        text content "ログ内容"
+        datetime created_at
     }
 
     BASE_PROMPTS {
@@ -124,6 +143,9 @@ erDiagram
     ISSUES ||--o{ COMMENTS : "紐付け"
     USERS ||--o{ COMMENTS : "発言"
     USERS ||--o{ PRODUCTS : "作成"
+    ISSUES ||--o{ CERTIFICATES : "解決証明"
+    USERS ||--o{ CERTIFICATES : "獲得"
+    LOGS ||--o{ LOGS : "入れ子"
 ```
 
 ---
@@ -150,18 +172,29 @@ classDiagram
 
     class D1_Database ["バックエンドデータベース (D1)"] {
         +users
-        +issues, comments
+        +issues, comments, certificates
         +products
         +base_prompts, slot_constraints
+        +logs
     }
 
     Browser_Frontend --> Hono_API_Handler : JSON (w/ JWT Cookie)
     Hono_API_Handler --> D1_Database : SQL (Bind Params)
-```
 
 ---
 
-## 5. API エンドポイント仕様（概要）
+## 5. プロジェクト構造
+
+```text
+m-komarabo-v2/
+├── .github/workflows/   # CI/CD (lint, typecheck, test, backup)
+├── docs/                # プロジェクトドキュメント
+├── functions/           # Hono API (Backend)
+├── public/              # フロントエンド静的ファイル
+└── tests/               # E2Eテスト
+```
+
+## 6. API エンドポイント仕様（概要）
 
 主要なルーティング構成（`[[route]].ts` より）：
 
