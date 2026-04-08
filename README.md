@@ -203,8 +203,13 @@ npx wrangler d1 execute m-komarabo-v2-db --remote --file=backup_yyyymmdd.sql
 
 ## 📚 ドキュメント (Documents)
 
-プロジェクトの詳細な仕様や設計については、以下を参照してください。
+### 📖 開発者向けドキュメント
+詳細な設計・仕様については [プロジェクト全容（正典）](./docs/DOCS_SUMMARY.md) を参照してください。
+- アーキテクチャ図（Mermaid）
+- データベース設計（ER図）
+- 全APIエンドポイント詳細
 
+### 📂 個別仕様・設計
 - [API仕様書](./docs/API_SPECIFICATION.md) - エンドポイント詳細・型定義
 - [データベース設計 (ER図)](./docs/er_diagram.md) - テーブル構造とリレーション
 - [クラス図](./docs/class_diagram.md) - モジュール構成と依存関係
